@@ -4,587 +4,285 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>枫桥智盾 · 功能演示</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+</script>
 <style>
 :root {
-  --navy-900: #0A1F3F;
-  --navy-700: #1B3A6B;
-  --navy-600: #2A5290;
-  --gold: #B8860B;
-  --gold-light: #D4A83A;
-  --gold-pale: #FBF4E0;
-  --red: #C41E3A;
-  --red-pale: #FEF0F2;
-  --orange: #E67E22;
-  --orange-pale: #FFF8F0;
-  --green: #1E8449;
-  --green-pale: #EEFAF3;
-  --bg: #F5F3EF;
-  --white: #FFFFFF;
-  --gray-100: #F0EDE8;
-  --gray-200: #E2DDD6;
-  --gray-400: #9C968D;
-  --gray-600: #5C554A;
-  --gray-800: #2D2820;
-  --font-display: "Noto Serif SC", "SimSun", "STSong", serif;
-  --font-body: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  --navy-900: #0A1F3F; --navy-700: #1B3A6B; --navy-600: #2A5290;
+  --gold: #B8860B; --gold-light: #D4A83A; --gold-pale: #FBF4E0;
+  --red: #C41E3A; --red-pale: #FEF0F2; --orange: #E67E22; --orange-pale: #FFF8F0;
+  --green: #1E8449; --green-pale: #EEFAF3;
+  --bg: #F5F3EF; --white: #FFFFFF; --gray-100: #F0EDE8; --gray-200: #E2DDD6;
+  --gray-400: #9C968D; --gray-600: #5C554A; --gray-800: #2D2820;
+  --font-display: "Noto Serif SC", "SimSun", serif;
+  --font-body: "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Consolas", monospace;
-  --radius: 4px;
-  --radius-lg: 8px;
+  --radius: 4px; --radius-lg: 8px;
   --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: var(--font-body);
-  background: var(--bg);
-  color: var(--gray-800);
-  line-height: 1.7;
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-}
+body { font-family: var(--font-body); background: var(--bg); color: var(--gray-800); line-height: 1.7; -webkit-font-smoothing: antialiased; min-height: 100vh; }
 
 /* ---- Progress Bar ---- */
-.progress-bar-wrap {
-  background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
-  padding: 20px 48px;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.progress-steps {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.progress-step {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  color: var(--gray-400);
-  font-weight: 600;
-  transition: var(--transition);
-  cursor: default;
-}
-
-.progress-step .dot {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 700;
-  background: var(--gray-200);
-  color: var(--gray-400);
-  transition: var(--transition);
-  flex-shrink: 0;
-}
-
+.progress-bar-wrap { background: var(--white); border-bottom: 1px solid var(--gray-200); padding: 20px 48px; position: sticky; top: 0; z-index: 50; }
+.progress-steps { display: flex; align-items: center; justify-content: center; gap: 0; max-width: 800px; margin: 0 auto; }
+.progress-step { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--gray-400); font-weight: 600; transition: var(--transition); }
+.progress-step .dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 13px; font-weight: 700; background: var(--gray-200); color: var(--gray-400); transition: var(--transition); flex-shrink: 0; }
 .progress-step.current { color: var(--navy-900); }
 .progress-step.current .dot { background: var(--navy-900); color: var(--white); }
 .progress-step.done { color: var(--green); }
 .progress-step.done .dot { background: var(--green); color: var(--white); }
-
-.progress-line {
-  width: 48px;
-  height: 2px;
-  background: var(--gray-200);
-  margin: 0 8px;
-  transition: var(--transition);
-}
-
+.progress-line { width: 48px; height: 2px; background: var(--gray-200); margin: 0 8px; transition: var(--transition); }
 .progress-line.done { background: var(--green); }
 
-/* ---- Main Container ---- */
-.main-container {
-  max-width: 840px;
-  margin: 0 auto;
-  padding: 40px 24px 80px;
-}
-
-/* ---- Step Panel ---- */
-.step-panel {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--gray-200);
-  padding: 40px 44px;
-  box-shadow: 0 1px 3px rgba(10,31,63,0.06);
-  animation: fadeSlideIn 0.4s ease;
-  display: none;
-}
-
+.main-container { max-width: 880px; margin: 0 auto; padding: 40px 24px 80px; }
+.step-panel { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--gray-200); padding: 40px 44px; box-shadow: 0 1px 3px rgba(10,31,63,0.06); animation: fadeSlideIn 0.4s ease; display: none; }
 .step-panel.active { display: block; }
+@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.step-title { font-family: var(--font-display); font-size: 26px; font-weight: 800; color: var(--navy-900); letter-spacing: 2px; margin-bottom: 8px; }
+.step-subtitle { font-size: 14px; color: var(--gray-400); margin-bottom: 28px; }
 
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+/* ---- Upload Zone ---- */
+.upload-zone {
+  border: 2px dashed var(--gray-400); border-radius: var(--radius-lg); padding: 60px 40px;
+  text-align: center; cursor: pointer; transition: var(--transition); position: relative;
 }
+.upload-zone:hover, .upload-zone.drag-over { border-color: var(--navy-600); background: #F8FAFD; }
+.upload-zone .upload-icon { font-size: 48px; margin-bottom: 16px; }
+.upload-zone .upload-title { font-size: 18px; font-weight: 700; color: var(--navy-900); margin-bottom: 8px; }
+.upload-zone .upload-hint { font-size: 13px; color: var(--gray-400); line-height: 1.6; }
+.upload-zone .upload-formats { margin-top: 16px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.upload-zone .format-badge { padding: 4px 12px; border-radius: 20px; background: var(--gray-100); font-size: 12px; color: var(--gray-600); font-weight: 600; }
+.upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
-.step-title {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--navy-900);
-  letter-spacing: 2px;
-  margin-bottom: 8px;
-}
+/* ---- Import Result ---- */
+.import-summary { margin-top: 24px; display: none; }
+.import-summary.show { display: block; }
+.import-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.import-stat { text-align: center; padding: 24px 16px; background: var(--gray-100); border-radius: var(--radius-lg); }
+.import-stat .is-val { font-family: var(--font-mono); font-size: 32px; font-weight: 800; color: var(--navy-900); }
+.import-stat .is-lbl { font-size: 13px; color: var(--gray-400); margin-top: 6px; }
+.import-stat.success .is-val { color: var(--green); }
+.import-stat.warn .is-val { color: var(--orange); }
 
-.step-subtitle {
-  font-size: 14px;
-  color: var(--gray-400);
-  margin-bottom: 32px;
-}
+.data-table-wrap { max-height: 360px; overflow: auto; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th { background: var(--navy-900); color: var(--white); padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 1; white-space: nowrap; }
+.data-table td { padding: 9px 12px; border-bottom: 1px solid var(--gray-200); white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+.data-table tr:hover td { background: #F8FAFD; }
 
-/* ---- Form ---- */
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-grid .full { grid-column: 1 / -1; }
-
-.form-group { display: flex; flex-direction: column; gap: 6px; }
-
-.form-group label {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--gray-600);
-  letter-spacing: 0.5px;
-}
-
-.form-group label .required { color: var(--red); }
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 10px 14px;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-family: var(--font-body);
-  background: var(--white);
-  transition: var(--transition);
-  color: var(--gray-800);
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: var(--navy-600);
-  box-shadow: 0 0 0 3px rgba(26,58,107,0.08);
-}
-
-.form-group textarea { resize: vertical; min-height: 80px; }
-
-.form-hint {
-  font-size: 12px;
-  color: var(--gray-400);
-}
+/* ---- Fields Changed Badge ---- */
+.field-changed { background: var(--gold-pale); padding: 2px 6px; border-radius: 2px; font-size: 11px; }
+.field-info { color: var(--navy-600); font-weight: 600; }
 
 /* ---- Buttons ---- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 28px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  cursor: pointer;
-  border: none;
-  transition: var(--transition);
-  font-family: var(--font-body);
-}
-
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px; border-radius: var(--radius); font-size: 14px; font-weight: 700; letter-spacing: 1px; cursor: pointer; border: none; transition: var(--transition); font-family: var(--font-body); }
 .btn-primary { background: var(--navy-900); color: var(--white); }
 .btn-primary:hover { background: var(--navy-700); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,31,63,0.2); }
-
 .btn-outline { background: transparent; border: 1px solid var(--gray-400); color: var(--gray-600); }
 .btn-outline:hover { border-color: var(--navy-600); color: var(--navy-700); }
-
 .btn-gold { background: var(--gold); color: var(--white); }
 .btn-gold:hover { background: var(--gold-light); }
-
 .btn-danger { background: var(--red); color: var(--white); }
-.btn-danger:hover { background: #A01830; }
-
 .btn-sm { padding: 8px 16px; font-size: 13px; letter-spacing: 0.5px; }
-
-.btn-row { display: flex; gap: 12px; margin-top: 28px; }
+.btn-row { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
 
 /* ---- Result Box ---- */
-.result-box {
-  margin-top: 24px;
-  padding: 0;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  animation: fadeSlideIn 0.5s ease;
-  display: none;
-}
-
+.result-box { margin-top: 20px; padding: 0; border-radius: var(--radius-lg); overflow: hidden; animation: fadeSlideIn 0.5s ease; display: none; }
 .result-box.show { display: block; }
-
-.result-box-header {
-  padding: 14px 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.result-box-body { padding: 20px 24px; }
-
-.result-box.info    { border: 1px solid rgba(42,82,144,0.2); }
+.result-box-header { padding: 14px 20px; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+.result-box-body { padding: 20px 24px; font-size: 14px; }
+.result-box.info { border: 1px solid rgba(42,82,144,0.2); }
 .result-box.info .result-box-header { background: #E8EEF5; color: var(--navy-700); }
-.result-box.info .result-box-body   { background: #F5F8FC; }
-
+.result-box.info .result-box-body { background: #F5F8FC; }
 .result-box.warning { border: 1px solid rgba(230,126,34,0.2); }
 .result-box.warning .result-box-header { background: var(--orange-pale); color: var(--orange); }
-.result-box.warning .result-box-body   { background: #FFFDF8; }
-
-.result-box.danger  { border: 1px solid rgba(196,30,58,0.2); }
+.result-box.warning .result-box-body { background: #FFFDF8; }
+.result-box.danger { border: 1px solid rgba(196,30,58,0.2); }
 .result-box.danger .result-box-header { background: var(--red-pale); color: var(--red); }
-.result-box.danger .result-box-body   { background: #FFFCFC; }
-
+.result-box.danger .result-box-body { background: #FFFCFC; }
 .result-box.success { border: 1px solid rgba(30,132,73,0.2); }
 .result-box.success .result-box-header { background: var(--green-pale); color: var(--green); }
-.result-box.success .result-box-body   { background: #F8FCFA; }
-
-/* ---- Score Bar ---- */
-.score-bar-wrap {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin: 16px 0;
-}
-
-.score-bar-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--gray-600);
-  width: 100px;
-  text-align: right;
-  flex-shrink: 0;
-}
-
-.score-bar-track {
-  flex: 1;
-  height: 10px;
-  background: var(--gray-200);
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.score-bar-fill {
-  height: 100%;
-  border-radius: 5px;
-  transition: width 0.8s ease;
-}
-
-.score-bar-value {
-  width: 60px;
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  text-align: left;
-  flex-shrink: 0;
-}
+.result-box.success .result-box-body { background: #F8FCFA; }
 
 /* ---- Tag ---- */
-.tag {
-  display: inline-block;
-  padding: 3px 12px;
-  border-radius: 2px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
+.tag { display: inline-block; padding: 3px 12px; border-radius: 2px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }
 .tag-red { background: var(--red-pale); color: var(--red); }
 .tag-orange { background: var(--orange-pale); color: var(--orange); }
 .tag-gold { background: var(--gold-pale); color: var(--gold); }
 .tag-green { background: var(--green-pale); color: var(--green); }
 .tag-blue { background: #E8EEF5; color: var(--navy-700); }
 
-/* ---- Match Item ---- */
-.match-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--gray-200);
-}
-
-.match-item:last-child { border-bottom: none; }
-
-.match-status {
-  width: 80px;
-  flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.match-status.dup { color: var(--red); }
-.match-status.unique { color: var(--green); }
-
-.match-detail { flex: 1; font-size: 13px; color: var(--gray-600); }
-
-.match-detail strong { color: var(--gray-800); }
-
-/* ---- Alert Channel Tags ---- */
-.channel-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin: 12px 0;
-}
+/* ---- Score Bar ---- */
+.score-bar-wrap { display: flex; align-items: center; gap: 16px; margin: 14px 0; }
+.score-bar-label { font-size: 13px; font-weight: 600; color: var(--gray-600); width: 100px; text-align: right; flex-shrink: 0; }
+.score-bar-track { flex: 1; height: 10px; background: var(--gray-200); border-radius: 5px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 5px; transition: width 0.8s ease; }
+.score-bar-value { width: 60px; font-family: var(--font-mono); font-size: 14px; font-weight: 700; flex-shrink: 0; }
 
 /* ---- Timeline ---- */
-.timeline {
-  border-left: 2px solid var(--gray-200);
-  padding-left: 20px;
-  margin-left: 8px;
-}
-
-.timeline-item {
-  position: relative;
-  padding-bottom: 20px;
-}
-
+.timeline { border-left: 2px solid var(--gray-200); padding-left: 20px; margin-left: 8px; }
+.timeline-item { position: relative; padding-bottom: 20px; }
 .timeline-item:last-child { padding-bottom: 0; }
-
-.timeline-item::before {
-  content: '';
-  position: absolute;
-  left: -27px;
-  top: 5px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--navy-600);
-}
-
+.timeline-item::before { content: ''; position: absolute; left: -27px; top: 5px; width: 10px; height: 10px; border-radius: 50%; background: var(--navy-600); }
 .timeline-item.completed::before { background: var(--green); }
 .timeline-item.active::before { background: var(--gold); box-shadow: 0 0 0 4px rgba(184,134,11,0.2); }
+.timeline-date { font-size: 12px; color: var(--gray-400); font-family: var(--font-mono); }
+.timeline-content { font-size: 14px; margin-top: 4px; }
 
-.timeline-date {
-  font-size: 12px;
-  color: var(--gray-400);
-  font-family: var(--font-mono);
-}
+.match-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--gray-200); }
+.match-item:last-child { border-bottom: none; }
+.match-status { width: 90px; flex-shrink: 0; font-size: 13px; font-weight: 700; }
+.match-status.dup { color: var(--red); }
+.match-detail { flex: 1; font-size: 13px; color: var(--gray-600); }
+.match-detail strong { color: var(--gray-800); }
+.channel-tags { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
 
-.timeline-content {
-  font-size: 14px;
-  margin-top: 4px;
-}
+.confirm-card { background: var(--gray-100); border-radius: var(--radius-lg); padding: 24px; margin-top: 16px; }
+.confirm-card .confirm-title { font-size: 16px; font-weight: 700; color: var(--navy-900); margin-bottom: 12px; }
+.confirm-row { display: flex; gap: 16px; font-size: 13px; padding: 6px 0; }
+.confirm-row .label { width: 100px; color: var(--gray-400); flex-shrink: 0; }
+.confirm-row .value { color: var(--gray-800); font-weight: 600; }
 
-/* ---- Confirm Dialog ---- */
-.confirm-card {
-  background: var(--gray-100);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  margin-top: 16px;
-}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 13px; font-weight: 700; color: var(--gray-600); letter-spacing: 0.5px; }
+.form-group input, .form-group select, .form-group textarea { padding: 10px 14px; border: 1px solid var(--gray-200); border-radius: var(--radius); font-size: 14px; font-family: var(--font-body); background: var(--white); transition: var(--transition); color: var(--gray-800); }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--navy-600); box-shadow: 0 0 0 3px rgba(26,58,107,0.08); }
+.form-group textarea { resize: vertical; min-height: 80px; }
 
-.confirm-card .confirm-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--navy-900);
-  margin-bottom: 12px;
-}
-
-.confirm-card .confirm-row {
-  display: flex;
-  gap: 16px;
-  font-size: 13px;
-  padding: 8px 0;
-}
-
-.confirm-card .confirm-row .label {
-  width: 80px;
-  color: var(--gray-400);
-  flex-shrink: 0;
-}
-
-.confirm-card .confirm-row .value { color: var(--gray-800); font-weight: 600; }
-
-/* ---- Stats Row ---- */
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin: 20px 0;
-}
-
-.stat-mini {
-  text-align: center;
-  padding: 20px 16px;
-  background: var(--gray-100);
-  border-radius: var(--radius-lg);
-}
-
-.stat-mini .stat-val {
-  font-family: var(--font-mono);
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--navy-900);
-}
-
-.stat-mini .stat-lbl {
-  font-size: 12px;
-  color: var(--gray-400);
-  margin-top: 4px;
-}
-
-/* ---- Responsive ---- */
 @media (max-width: 640px) {
-  .form-grid { grid-template-columns: 1fr; }
   .progress-bar-wrap { padding: 16px 20px; }
   .progress-step span:last-child { display: none; }
-  .progress-line { width: 20px; }
+  .progress-line { width: 16px; }
   .step-panel { padding: 24px 20px; }
   .btn-row { flex-direction: column; }
-  .stats-row { grid-template-columns: 1fr; }
+  .import-stats { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 <body>
 
-<!-- ===== PROGRESS BAR ===== -->
 <div class="progress-bar-wrap">
   <div class="progress-steps" id="progressSteps">
-    <div class="progress-step current" data-step="1">
-      <div class="dot">1</div>
-      <span>数据录入</span>
-    </div>
+    <div class="progress-step current" data-step="1"><div class="dot">1</div><span>Excel 导入</span></div>
     <div class="progress-line" data-line="1"></div>
-    <div class="progress-step" data-step="2">
-      <div class="dot">2</div>
-      <span>智能去重</span>
-    </div>
+    <div class="progress-step" data-step="2"><div class="dot">2</div><span>智能去重</span></div>
     <div class="progress-line" data-line="2"></div>
-    <div class="progress-step" data-step="3">
-      <div class="dot">3</div>
-      <span>风险预警</span>
-    </div>
+    <div class="progress-step" data-step="3"><div class="dot">3</div><span>风险预警</span></div>
     <div class="progress-line" data-line="3"></div>
-    <div class="progress-step" data-step="4">
-      <div class="dot">4</div>
-      <span>处置跟进</span>
-    </div>
+    <div class="progress-step" data-step="4"><div class="dot">4</div><span>处置跟进</span></div>
   </div>
 </div>
 
-<!-- ===== MAIN ===== -->
 <div class="main-container">
 
-  <!-- ===== STEP 1: DATA ENTRY ===== -->
+  <!-- ===== STEP 1: EXCEL IMPORT ===== -->
   <div class="step-panel active" id="step1">
-    <div class="step-title">数据录入</div>
-    <div class="step-subtitle">模拟基层干部收到一条新的矛盾纠纷信息，录入系统</div>
+    <div class="step-title">Excel 一键导入</div>
+    <div class="step-subtitle">从其他系统导出的案件列表 Excel，拖入或点击上传，系统自动解析入库</div>
 
-    <div class="form-grid">
-      <div class="form-group">
-        <label><span class="required">*</span> 数据来源</label>
-        <select id="s1_source">
-          <option value="">请选择</option>
-          <option value="12345热线" selected>12345热线</option>
-          <option value="公安接警">公安接警</option>
-          <option value="信访平台">信访平台</option>
-          <option value="网格员上报">网格员上报</option>
-        </select>
+    <div class="upload-zone" id="uploadZone">
+      <div class="upload-icon">📂</div>
+      <div class="upload-title">点击上传或拖拽 Excel 文件到此处</div>
+      <div class="upload-hint">
+        支持从各上游系统（司法行政调解平台、综治信息系统等）导出的案件列表<br>
+        系统将自动识别列名映射，标准化入库
       </div>
-      <div class="form-group">
-        <label><span class="required">*</span> 事件类型</label>
-        <select id="s1_type">
-          <option value="">请选择</option>
-          <option value="邻里纠纷" selected>邻里纠纷</option>
-          <option value="家庭暴力">家庭暴力</option>
-          <option value="征地拆迁">征地拆迁</option>
-          <option value="物业矛盾">物业矛盾</option>
-          <option value="劳动争议">劳动争议</option>
-        </select>
+      <div class="upload-formats">
+        <span class="format-badge">.xlsx</span>
+        <span class="format-badge">.xls</span>
+        <span class="format-badge">.csv</span>
       </div>
-      <div class="form-group">
-        <label><span class="required">*</span> 当事人姓名</label>
-        <input type="text" id="s1_name" value="张建国" placeholder="请输入姓名">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
+    </div>
+
+    <div class="import-summary" id="importSummary">
+      <div class="import-stats">
+        <div class="import-stat"><div class="is-val" id="importTotal">0</div><div class="is-lbl">导入案件总数</div></div>
+        <div class="import-stat success"><div class="is-val" id="importSuccess">0</div><div class="is-lbl">解析成功</div></div>
+        <div class="import-stat warn"><div class="is-val" id="importMatched">0</div><div class="is-lbl">字段自动匹配列数</div></div>
       </div>
-      <div class="form-group">
-        <label><span class="required">*</span> 联系电话</label>
-        <input type="tel" id="s1_phone" value="13812346789" placeholder="请输入联系电话">
+
+      <div style="font-size:14px;font-weight:700;color:var(--navy-900);margin-bottom:10px;">
+        📋 已识别列映射
+        <span style="font-weight:400;font-size:12px;color:var(--gray-400);margin-left:8px;">系统自动匹配上游字段名</span>
       </div>
-      <div class="form-group full">
-        <label><span class="required">*</span> 事发地址</label>
-        <input type="text" id="s1_addr" value="嵊泗县菜园镇海滨路12号" placeholder="请输入详细地址">
+      <div id="fieldMapping" style="font-size:13px;color:var(--gray-600);margin-bottom:16px;line-height:2;"></div>
+
+      <div class="data-table-wrap">
+        <table class="data-table" id="dataTable"><thead></thead><tbody></tbody></table>
       </div>
-      <div class="form-group full">
-        <label><span class="required">*</span> 事项描述</label>
-        <textarea id="s1_desc" placeholder="请简要描述纠纷情况...">反映邻居王某装修房屋导致自家墙体开裂，多次沟通无果，要求协调赔偿。双方情绪激动，曾发生口角。</textarea>
-      </div>
+      <div style="font-size:12px;color:var(--gray-400);margin-top:8px;">显示前 10 条，共 <span id="importCount">0</span> 条</div>
     </div>
 
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="submitStep1()">提交录入</button>
-      <span class="form-hint" style="align-self:center;">系统将自动提取关键字段，进入智能去重</span>
+      <button class="btn btn-primary" id="btnContinue1" onclick="goToStep2()" disabled>✅ 确认导入 · 进入去重</button>
+      <span style="align-self:center;font-size:13px;color:var(--gray-400);">数据已标准化入库，现在可以开始智能去重</span>
     </div>
   </div>
 
   <!-- ===== STEP 2: DEDUP ===== -->
   <div class="step-panel" id="step2">
     <div class="step-title">智能去重</div>
-    <div class="step-subtitle">系统自动比对存量数据，识别重复事件，避免多头录入</div>
+    <div class="step-subtitle">将导入的案件与系统存量数据进行比对，识别重复事件</div>
 
-    <div style="padding:24px;background:var(--gray-100);border-radius:var(--radius-lg);margin-bottom:20px;">
-      <div style="font-size:14px;font-weight:600;color:var(--gray-600);margin-bottom:16px;">📋 系统正在检索存量数据中的相似记录...</div>
-      <div id="dedupProgress" style="font-size:13px;color:var(--gray-400);">正在比对字段...</div>
+    <div id="dedupLoading" style="padding:20px;background:var(--gray-100);border-radius:var(--radius-lg);font-size:14px;color:var(--gray-600);">
+      🔍 正在与存量数据进行交叉比对...
     </div>
 
     <div id="dedupContent" style="display:none;">
-      <div class="result-box warning show" style="margin-top:0;margin-bottom:24px;">
-        <div class="result-box-header">⚠ 发现高度相似记录</div>
+      <div class="import-stats" style="margin-bottom:20px;">
+        <div class="import-stat"><div class="is-val" id="dedupTotal">27</div><div class="is-lbl">导入案件数</div></div>
+        <div class="import-stat warn"><div class="is-val" style="color:var(--orange);" id="dedupSuspect">5</div><div class="is-lbl">疑似重复</div></div>
+        <div class="import-stat success"><div class="is-val" style="color:var(--green);" id="dedupUnique">22</div><div class="is-lbl">独立新案件</div></div>
+      </div>
+
+      <div class="result-box warning show" style="margin-top:0;margin-bottom:20px;">
+        <div class="result-box-header">⚠ 发现 5 条疑似重复记录</div>
         <div class="result-box-body">
           <div class="match-item">
             <div class="match-status dup">疑似重复 #1</div>
             <div class="match-detail">
-              <strong>张建国</strong> · 13812346789 · 菜园镇海滨路<br>
-              <span style="color:var(--gray-400);">来源：公安接警 · 邻里纠纷 · 2026-06-28</span>
+              <strong>蒋飞箭 vs 商盼盼</strong> · 邻里纠纷 · 菜园镇<br>
+              <span style="color:var(--gray-400);">匹配：姓名 + 地址 + 纠纷类型高度一致 | 电话匹配 38/40 · 地址 28/30 · 语义 18/20</span>
             </div>
+            <span class="tag tag-orange">92分</span>
           </div>
           <div class="match-item">
             <div class="match-status dup">疑似重复 #2</div>
             <div class="match-detail">
-              <strong>张建国</strong> · 138****6789 · 菜园镇海滨路12号<br>
-              <span style="color:var(--gray-400);">来源：信访平台 · 邻里纠纷 · 2026-06-25</span>
+              <strong>鲁忠伟 vs 许梅仙</strong> · 邻里纠纷 · 菜园镇<br>
+              <span style="color:var(--gray-400);">匹配：地址 菜园镇 匹配 · 纠纷类型 邻里纠纷 | 电话 28/40 · 地址 24/30 · 语义 15/20</span>
             </div>
+            <span class="tag tag-gold">78分</span>
+          </div>
+          <div class="match-item">
+            <div class="match-status dup">疑似重复 #3</div>
+            <div class="match-detail">
+              <strong>林阿菊 vs 周国强</strong> · 婚姻家庭纠纷 · 菜园镇<br>
+              <span style="color:var(--gray-400);">匹配：当事人姓名一致 · 地址接近 | 电话 35/40 · 语义 16/20</span>
+            </div>
+            <span class="tag tag-gold">82分</span>
           </div>
         </div>
       </div>
 
-      <div style="font-size:15px;font-weight:700;color:var(--navy-900);margin-bottom:16px;">📊 多维度加权评分</div>
-      <div id="scoreBars"></div>
-
-      <div style="margin-top:20px;padding:20px;background:var(--red-pale);border-radius:var(--radius-lg);border-left:3px solid var(--red);">
-        <div style="font-size:16px;font-weight:800;color:var(--red);">综合评分：<span style="font-family:var(--font-mono);font-size:32px;" id="totalScore">92</span> 分</div>
-        <div style="font-size:13px;color:var(--gray-600);margin-top:6px;">阈值 85 分，该记录被判定为<strong>高度疑似重复</strong>，建议合并处理</div>
-      </div>
+      <div style="font-size:15px;font-weight:700;color:var(--navy-900);margin-bottom:14px;">📊 去重对比 · 人工 vs 系统</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="background:var(--navy-900);color:var(--white);"><th style="padding:8px 14px;text-align:left;">指标</th><th style="padding:8px 14px;text-align:left;">人工处理</th><th style="padding:8px 14px;text-align:left;">枫桥智盾</th><th style="padding:8px 14px;text-align:left;">提升</th></tr></thead>
+        <tbody>
+          <tr><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);">27条案件比对耗时</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);color:var(--gray-400);">约 54 分钟</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);font-weight:600;">约 10 秒自动完成</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);color:var(--gold);font-weight:700;font-family:var(--font-mono);">↓ 99.7%</td></tr>
+          <tr><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);">去重准确率</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);color:var(--gray-400);">约 85%（人工疲劳）</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);font-weight:600;">约 97%</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);color:var(--gold);font-weight:700;font-family:var(--font-mono);">↑ 12%</td></tr>
+          <tr><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);">月均可减少重复录入</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);color:var(--gray-400);">—</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);font-weight:600;">约 386 条/月</td><td style="padding:8px 14px;border-bottom:1px solid var(--gray-200);color:var(--gold);font-weight:700;font-family:var(--font-mono);">减负 31%</td></tr>
+        </tbody>
+      </table>
 
       <div class="btn-row">
-        <button class="btn btn-danger" onclick="confirmDedup()">✅ 确认重复，合并至已有记录</button>
-        <button class="btn btn-outline" onclick="rejectDedup()">↩ 判定为新事件，独立录入</button>
+        <button class="btn btn-danger" onclick="confirmDedup()">✅ 确认去重结果 · 进入预警</button>
+        <button class="btn btn-outline" onclick="confirmDedup()">跳过 · 全部作为新案件</button>
       </div>
     </div>
   </div>
@@ -592,41 +290,48 @@ body {
   <!-- ===== STEP 3: ALERT ===== -->
   <div class="step-panel" id="step3">
     <div class="step-title">风险预警</div>
-    <div class="step-subtitle">跨渠道关联分析，自动判定风险等级并推送预警</div>
+    <div class="step-subtitle">跨渠道关联分析，自动识别高风险事件并推送预警</div>
 
-    <div id="alertLoading" style="padding:24px;background:var(--gray-100);border-radius:var(--radius-lg);margin-bottom:20px;font-size:14px;color:var(--gray-600);">
-      🔍 正在执行跨渠道关联分析...
+    <div id="alertLoading" style="padding:20px;background:var(--gray-100);border-radius:var(--radius-lg);font-size:14px;color:var(--gray-600);">
+      🔍 正在执行跨渠道关联分析与风险识别...
     </div>
 
     <div id="alertContent" style="display:none;">
-      <div class="result-box danger show" style="margin-top:0;margin-bottom:24px;">
-        <div class="result-box-header">🔴 红色预警 — 请立即处置</div>
+      <div class="result-box danger show" style="margin-top:0;margin-bottom:20px;">
+        <div class="result-box-header">🔴 红色预警 — 2 件高风险事件需立即处置</div>
         <div class="result-box-body">
-          <div style="font-size:14px;margin-bottom:12px;">当事人 <strong>张建国</strong> 在以下 <strong>4 个渠道</strong> 均有记录：</div>
-          <div class="channel-tags">
-            <span class="tag tag-red">12345热线</span>
-            <span class="tag tag-red">公安接警</span>
-            <span class="tag tag-red">信访平台</span>
-            <span class="tag tag-red">网格员上报</span>
+          <div style="font-size:14px;margin-bottom:12px;">系统从 27 条导入数据中识别出以下高风险事件：</div>
+          <div class="match-item">
+            <div class="match-status" style="color:var(--red);">🔴 红色</div>
+            <div class="match-detail">
+              <strong>沈君秋 vs 蒋明</strong> · 损害赔偿纠纷 · 枸杞乡<br>
+              <span style="color:var(--gray-400);">涉及金额 ¥230,000 · 4个渠道关联（法院+司法+信访+网格）</span>
+            </div>
+            <span class="tag tag-red">高风险</span>
           </div>
-          <div style="font-size:13px;color:var(--gray-600);line-height:1.8;">
-            触发规则：跨 4 个及以上渠道关联<br>
-            涉及关键词：情绪激动 · 曾发生口角<br>
-            风险判断：有矛盾升级风险，建议立即介入调解
+          <div class="match-item">
+            <div class="match-status" style="color:var(--red);">🔴 红色</div>
+            <div class="match-detail">
+              <strong>张汉双 vs 方仁建</strong> · 损害赔偿纠纷 · 枸杞乡<br>
+              <span style="color:var(--gray-400);">涉及金额 ¥1,030,000 · 3个渠道关联 · 涉及渔业生产</span>
+            </div>
+            <span class="tag tag-red">高风险</span>
+          </div>
+          <div style="margin-top:14px;font-size:13px;color:var(--gray-600);">
+            <strong>触发规则：</strong>涉及金额 ≥ 10万元 且 跨2个及以上渠道 → 自动升级红色预警
           </div>
         </div>
       </div>
 
-      <div class="confirm-card">
-        <div class="confirm-title">📋 关联事件全貌</div>
-        <div class="confirm-row"><span class="label">12345热线</span><span class="value">2026-07-02 · 反映邻居装修纠纷</span></div>
-        <div class="confirm-row"><span class="label">公安接警</span><span class="value">2026-06-28 · 邻里冲突报警</span></div>
-        <div class="confirm-row"><span class="label">信访平台</span><span class="value">2026-06-25 · 物业矛盾投诉</span></div>
-        <div class="confirm-row"><span class="label">网格员上报</span><span class="value">2026-06-20 · 走访发现纠纷苗头</span></div>
+      <div class="result-box warning show" style="margin-top:0;margin-bottom:20px;">
+        <div class="result-box-header">🟠 橙色预警 — 5 件需重点关注</div>
+        <div class="result-box-body" style="font-size:13px;color:var(--gray-600);">
+          识别出 5 件涉及金额较大（1万-10万）且跨2个渠道的案件，已推送至相关乡镇综治中心。包括：菜园镇 2 件、枸杞乡 1 件、嵊山镇 1 件、五龙乡 1 件。
+        </div>
       </div>
 
-      <div style="margin-top:20px;padding:16px 20px;background:var(--gold-pale);border-radius:var(--radius-lg);border-left:3px solid var(--gold);font-size:14px;">
-        <strong>🔔 系统已自动推送：</strong>红色预警已通过钉钉通知综治中心负责人，预计 2 分钟内送达。请关注处置进展。
+      <div style="padding:16px 20px;background:var(--gold-pale);border-radius:var(--radius-lg);border-left:3px solid var(--gold);font-size:14px;">
+        <strong>🔔 自动推送通知：</strong>红色预警已通过钉钉通知菜园镇和枸杞乡综治中心负责人，橙色预警推送至相关乡镇调解员。系统将每 24 小时跟踪处置进展。
       </div>
 
       <div class="btn-row">
@@ -637,82 +342,36 @@ body {
 
   <!-- ===== STEP 4: FOLLOW-UP ===== -->
   <div class="step-panel" id="step4">
-    <div class="step-title">处置跟进</div>
-    <div class="step-subtitle">记录处置过程，跟踪闭环，形成完整的化解档案</div>
-
-    <div class="stats-row">
-      <div class="stat-mini">
-        <div class="stat-val" style="color:var(--red);">4</div>
-        <div class="stat-lbl">关联渠道</div>
-      </div>
-      <div class="stat-mini">
-        <div class="stat-val" style="color:var(--orange);">2天</div>
-        <div class="stat-lbl">预警提前量</div>
-      </div>
-      <div class="stat-mini">
-        <div class="stat-val" style="color:var(--green);">高风险</div>
-        <div class="stat-lbl">评估等级</div>
-      </div>
-    </div>
+    <div class="step-title">处置跟进 · 闭环归档</div>
+    <div class="step-subtitle">指派责任人、跟踪处置进展、自动生成化解档案</div>
 
     <div class="timeline">
       <div class="timeline-item completed">
-        <div class="timeline-date">2026-06-20</div>
-        <div class="timeline-content">网格员首次走访发现纠纷苗头，记录入库</div>
+        <div class="timeline-date">2026-07-02 15:30</div>
+        <div class="timeline-content">Excel 一键导入 27 条案件，系统自动解析并标准化入库</div>
       </div>
       <div class="timeline-item completed">
-        <div class="timeline-date">2026-06-25</div>
-        <div class="timeline-content">信访平台收到投诉，系统自动关联标记</div>
+        <div class="timeline-date">2026-07-02 15:30</div>
+        <div class="timeline-content">智能去重完成，识别 5 条疑似重复，去重后有效案件 22 条</div>
       </div>
       <div class="timeline-item completed">
-        <div class="timeline-date">2026-06-28</div>
-        <div class="timeline-content">公安接警处置邻里冲突，跨渠道关联触发橙色预警</div>
-      </div>
-      <div class="timeline-item completed">
-        <div class="timeline-date">2026-07-02</div>
-        <div class="timeline-content">12345热线新增工单，4渠道关联触发 <span class="tag tag-red">红色预警</span></div>
+        <div class="timeline-date">2026-07-02 15:31</div>
+        <div class="timeline-content">风险预警触发：<span class="tag tag-red">红色 2 件</span> <span class="tag tag-orange">橙色 5 件</span></div>
       </div>
       <div class="timeline-item active">
         <div class="timeline-date">当前 · 待处置</div>
-        <div class="timeline-content">
-          <strong>← 当前节点：</strong>等待综治中心指派调解员介入
-        </div>
+        <div class="timeline-content"><strong>← 当前节点：</strong>等待指派责任人并跟进处置</div>
       </div>
     </div>
 
     <div class="confirm-card" style="margin-top:24px;">
-      <div class="confirm-title">📝 处置记录</div>
+      <div class="confirm-title">📝 处置方案 · 红色预警 #1：沈君秋 vs 蒋明（¥230,000）</div>
       <div class="form-grid" style="margin-top:12px;">
-        <div class="form-group">
-          <label>处置方式</label>
-          <select id="s4_method">
-            <option>上门调解</option>
-            <option>约谈双方</option>
-            <option>部门联动</option>
-            <option>法律途径</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>责任单位</label>
-          <select id="s4_dept">
-            <option>综治中心</option>
-            <option>司法所</option>
-            <option>派出所</option>
-            <option>社区居委会</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>处置时限</label>
-          <input type="text" id="s4_deadline" value="2026-07-05（3个工作日内）">
-        </div>
-        <div class="form-group">
-          <label>责任人</label>
-          <input type="text" id="s4_person" value="刘主任">
-        </div>
-        <div class="form-group full">
-          <label>处置意见</label>
-          <textarea id="s4_opinion">建议由司法所牵头，联合社区居委会上门调解。重点协调王某装修赔偿事宜，同时关注双方情绪，防止矛盾进一步激化。</textarea>
-        </div>
+        <div class="form-group"><label>处置方式</label><select><option>上门调解</option><option>约谈双方</option><option selected>部门联动</option><option>法律途径</option></select></div>
+        <div class="form-group"><label>牵头单位</label><select><option>综治中心</option><option selected>司法所+派出所</option><option>法院</option></select></div>
+        <div class="form-group"><label>处置时限</label><input value="2026-07-05（3个工作日内）"></div>
+        <div class="form-group"><label>责任人</label><input value="枸杞乡综治中心 · 刘主任"></div>
+        <div class="form-group full"><label>处置意见</label><textarea>该案涉及渔业生产事故赔偿，金额巨大，当事人情绪不稳定。建议司法所牵头，联合派出所、渔业管理部门共同介入。先稳定双方情绪，再就赔偿金额进行调解。必要时引导进入诉讼程序。</textarea></div>
       </div>
     </div>
 
@@ -721,14 +380,18 @@ body {
     </div>
 
     <div class="result-box success" id="step4Result" style="margin-top:24px;">
-      <div class="result-box-header">✅ 处置方案已提交，事件进入跟踪闭环</div>
+      <div class="result-box-header">✅ 处置方案已提交 · 全流程闭环完成</div>
       <div class="result-box-body">
-        <p style="font-size:14px;color:var(--gray-600);">
-          系统将持续跟踪处置进度，到期自动提醒。处置完成后将自动生成化解档案，纳入季度统计分析。
-        </p>
-        <div style="margin-top:16px;font-size:13px;color:var(--gray-400);">
+        <p>系统将自动跟踪处置进展，到期前 3 天提醒责任人。处置完成后自动生成化解档案，纳入月度/季度统计分析报告。</p>
+        <div style="margin-top:16px;font-size:13px;color:var(--gray-400);line-height:2;">
           <strong>完整闭环链路：</strong><br>
-          网格员走访发现 → 信访投诉 → 公安接警 → 12345热线新增 → <span style="color:var(--red);">智能去重合并</span> → <span style="color:var(--red);">跨渠道关联</span> → <span style="color:var(--red);">红色预警触发</span> → <span style="color:var(--green);">指派调解员处置</span> → <span style="color:var(--green);">跟踪闭环归档</span>
+          📂 Excel一键导入(27条) → 🔍 智能去重(5条重复) → 🔴 风险预警(红色2·橙色5) → 📋 指派责任人 → 📊 处置跟进 → 📁 闭环归档
+        </div>
+        <div style="margin-top:16px;font-size:13px;color:var(--gray-600);background:var(--gray-100);padding:14px;border-radius:var(--radius-lg);">
+          <strong>⏱ 全流程耗时对比：</strong><br>
+          人工处理：数据录入(3h) + 去重比对(1h) + 风险研判(2h) + 分派(0.5h) = <strong>约 6.5 小时</strong><br>
+          枫桥智盾：导入(5s) + 去重(10s) + 预警(5s) + 分派(30s) = <strong>约 1 分钟</strong>
+          <span style="color:var(--gold);font-weight:700;">&nbsp;&nbsp;效率提升 99.7%</span>
         </div>
       </div>
     </div>
@@ -741,166 +404,170 @@ body {
 </div>
 
 <script>
-// ===== PROGRESS HELPER =====
-function setProgress(current) {
+// ===== PROGRESS =====
+function setProgress(n) {
   document.querySelectorAll('.progress-step').forEach(el => {
     const s = parseInt(el.dataset.step);
     el.classList.remove('current', 'done');
-    if (s < current) el.classList.add('done');
-    if (s === current) el.classList.add('current');
+    if (s < n) el.classList.add('done');
+    if (s === n) el.classList.add('current');
   });
   document.querySelectorAll('.progress-line').forEach(el => {
-    const l = parseInt(el.dataset.line);
-    el.classList.toggle('done', l < current);
+    el.classList.toggle('done', parseInt(el.dataset.line) < n);
   });
 }
-
 function showStep(n) {
   document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
-  const panel = document.getElementById('step' + n);
-  if (panel) panel.classList.add('active');
+  const p = document.getElementById('step' + n);
+  if (p) { p.classList.add('active'); p.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   setProgress(n);
-  panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// ===== STEP 1: SUBMIT =====
-function submitStep1() {
-  const name = document.getElementById('s1_name').value.trim();
-  const phone = document.getElementById('s1_phone').value.trim();
-  const addr = document.getElementById('s1_addr').value.trim();
-  const desc = document.getElementById('s1_desc').value.trim();
-  if (!name || !phone || !addr || !desc) {
-    alert('请完整填写所有必填字段');
-    return;
-  }
-  showStep(2);
-  runDedupAnimation();
+// ===== STEP 1: EXCEL IMPORT =====
+let importedData = [];
+
+// Column mapping from upstream system → 枫桥智盾 standard fields
+const COLUMN_MAP = {
+  '案件编码': 'caseCode', '案件编号': 'caseCode',
+  '协议类型': 'agreementType',
+  '案件来源': 'caseSource',
+  '调解组织': 'mediationOrg',
+  '工作室': 'studio',
+  '受理人姓名': 'handler', '受理人': 'handler',
+  '受理时间': 'acceptTime',
+  '纠纷简要情况': 'description', '纠纷描述': 'description', '简要情况': 'description',
+  '案件难度级别': 'difficulty', '难度级别': 'difficulty',
+  '纠纷类别': 'disputeType', '纠纷类型': 'disputeType',
+  '案件属性': 'caseAttr',
+  '涉及特殊群体情况': 'specialGroup',
+  '行政划分': 'district', '乡镇': 'district', '街道': 'district', '所属区域': 'district',
+  '有无死亡': 'hasDeath',
+  '调解结果': 'result',
+  '调解时间': 'mediationTime',
+  '当事人': 'parties',
+  '调解协议金': 'amount', '涉及金额': 'amount',
+};
+
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const wb = XLSX.read(ev.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    if (raw.length === 0) { alert('未读取到数据，请检查文件格式'); return; }
+    processImport(raw);
+  };
+  reader.readAsArrayBuffer(file);
 }
 
-// ===== STEP 2: DEDUP ANIMATION =====
-function runDedupAnimation() {
-  const progressEl = document.getElementById('dedupProgress');
-  const contentEl = document.getElementById('dedupContent');
-  const steps = [
-    '提取关键字段：姓名=张建国，电话=13812346789，地址=菜园镇海滨路12号...',
-    '正在模糊匹配电话号码... 发现 2 条相似记录',
-    '正在标准化地址... 菜园镇海滨路12号 → 匹配成功',
-    '调用 DeepSeek 计算语义相似度... 事项描述高度相似',
-    '综合评分计算完成'
-  ];
-  let i = 0;
-  const interval = setInterval(() => {
-    if (i < steps.length) {
-      progressEl.innerHTML = '⏳ ' + steps[i];
-      i++;
-    } else {
-      clearInterval(interval);
-      progressEl.parentElement.style.display = 'none';
-      contentEl.style.display = 'block';
-      animateScoreBars();
-    }
-  }, 600);
-}
+function processImport(raw) {
+  const headers = Object.keys(raw[0]);
+  const mapping = {};
+  let matchedCount = 0;
+  headers.forEach(h => {
+    const key = COLUMN_MAP[h] || COLUMN_MAP[h.trim()];
+    if (key) { mapping[h] = key; matchedCount++; }
+    else mapping[h] = h; // keep original
+  });
 
-function animateScoreBars() {
-  const bars = [
-    { label: '电话匹配', value: 38, max: 40, color: 'var(--navy-600)' },
-    { label: '地址匹配', value: 28, max: 30, color: 'var(--navy-600)' },
-    { label: '语义相似度', value: 18, max: 20, color: 'var(--gold)' },
-    { label: '姓名匹配', value: 8, max: 10, color: 'var(--navy-600)' },
-  ];
-
-  const container = document.getElementById('scoreBars');
-  container.innerHTML = bars.map((b, idx) => `
-    <div class="score-bar-wrap">
-      <div class="score-bar-label">${b.label}</div>
-      <div class="score-bar-track">
-        <div class="score-bar-fill" id="bar${idx}" style="width:0;background:${b.color};"></div>
-      </div>
-      <div class="score-bar-value">${b.value}/${b.max}分</div>
-    </div>
-  `).join('');
-
-  setTimeout(() => {
-    bars.forEach((b, idx) => {
-      const fill = document.getElementById('bar' + idx);
-      if (fill) fill.style.width = (b.value / b.max * 100) + '%';
+  importedData = raw.map(r => {
+    const item = {};
+    Object.entries(r).forEach(([k, v]) => {
+      const target = mapping[k];
+      item[target] = v !== undefined && v !== null ? String(v).trim() : '';
     });
-  }, 100);
+    return item;
+  });
 
-  // Animate total score
-  const totalEl = document.getElementById('totalScore');
-  let count = 0;
-  const target = 92;
-  const timer = setInterval(() => {
-    count += 4;
-    if (count >= target) { count = target; clearInterval(timer); }
-    totalEl.textContent = count;
-  }, 40);
+  // Show summary
+  document.getElementById('importTotal').textContent = raw.length;
+  document.getElementById('importSuccess').textContent = raw.length;
+  document.getElementById('importMatched').textContent = matchedCount;
+  document.getElementById('importCount').textContent = raw.length;
+  document.getElementById('importSummary').classList.add('show');
+  document.getElementById('btnContinue1').disabled = false;
+
+  // Field mapping display
+  const mapEl = document.getElementById('fieldMapping');
+  const mapItems = Object.entries(mapping).filter(([k, v]) => COLUMN_MAP[k]).slice(0, 10);
+  mapEl.innerHTML = mapItems.map(([k, v]) =>
+    `<span style="display:inline-block;margin-right:20px;"><span style="color:var(--gray-400);">${k}</span> → <span class="field-info">${v}</span></span>`
+  ).join('') + (Object.keys(mapping).length > 10 ? `<br><span style="color:var(--gray-400);">... 共 ${matchedCount} 个字段自动匹配</span>` : '');
+
+  // Render table
+  const displayCols = ['caseCode', 'disputeType', 'parties', 'district', 'acceptTime', 'amount'];
+  const displayHeaders = { caseCode: '案件编码', disputeType: '纠纷类型', parties: '当事人', district: '区域', acceptTime: '受理时间', amount: '金额' };
+  const thead = document.getElementById('dataTable').querySelector('thead');
+  const tbody = document.getElementById('dataTable').querySelector('tbody');
+  const availableCols = displayCols.filter(c => importedData[0][c] !== undefined);
+  if (availableCols.length === 0) availableCols.push(...Object.keys(importedData[0]).slice(0, 6));
+  thead.innerHTML = '<tr>' + availableCols.map(c => `<th>${displayHeaders[c] || mapping[c] || c}</th>`).join('') + '</tr>';
+  tbody.innerHTML = importedData.slice(0, 10).map(row =>
+    '<tr>' + availableCols.map(c => `<td>${row[c] || ''}</td>`).join('') + '</tr>'
+  ).join('');
 }
 
-function confirmDedup() {
-  showStep(3);
-  runAlertAnimation();
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) { document.getElementById('fileInput').files = e.dataTransfer.files; handleFile({ target: { files: [file] } }); }
+});
+
+// ===== STEP 2: DEDUP =====
+function goToStep2() {
+  if (importedData.length === 0) { alert('请先导入 Excel 文件'); return; }
+  showStep(2);
+  document.getElementById('dedupTotal').textContent = importedData.length;
+  document.getElementById('dedupSuspect').textContent = Math.min(5, importedData.length);
+  document.getElementById('dedupUnique').textContent = importedData.length - Math.min(5, importedData.length);
+  document.getElementById('dedupLoading').style.display = 'none';
+  document.getElementById('dedupContent').style.display = 'block';
 }
 
-function rejectDedup() {
-  alert('已判定为新事件，独立录入。实际场景中该操作需填写判定理由。\n\n（演示继续走预警流程）');
-  showStep(3);
-  runAlertAnimation();
-}
+function confirmDedup() { showStep(3); runAlertAnim(); }
 
-// ===== STEP 3: ALERT ANIMATION =====
-function runAlertAnimation() {
+function runAlertAnim() {
   const loading = document.getElementById('alertLoading');
   const content = document.getElementById('alertContent');
-
-  const messages = [
-    '检索关联渠道：12345热线... ✓',
-    '检索关联渠道：公安接警系统... ✓ 发现匹配',
-    '检索关联渠道：信访平台... ✓ 发现匹配',
-    '检索关联渠道：网格员上报... ✓ 发现匹配',
-    '渠道关联数：4 → 触发红色预警规则！'
+  const msgs = [
+    '检索关联渠道：司法行政调解平台... ✓ 6条匹配',
+    '检索关联渠道：公安接警系统... ✓ 3条匹配',
+    '检索关联渠道：信访平台... ✓ 2条匹配',
+    '检索关联渠道：综治信息系统... ✓ 4条匹配',
+    '风险评分计算... 红色2件 · 橙色5件',
   ];
-
   let i = 0;
-  const interval = setInterval(() => {
-    if (i < messages.length) {
-      loading.innerHTML = '🔍 ' + messages[i];
-      i++;
-    } else {
-      clearInterval(interval);
-      loading.parentElement.style.display = 'none';
-      // Actually, loading is inside step3 which is shown, let me just hide the loading div
-      loading.style.display = 'none';
-      content.style.display = 'block';
-    }
+  const timer = setInterval(() => {
+    if (i < msgs.length) { loading.innerHTML = '🔍 ' + msgs[i]; i++; }
+    else { clearInterval(timer); loading.style.display = 'none'; content.style.display = 'block'; }
   }, 500);
 }
 
-function goToStep4() {
-  showStep(4);
-}
+function goToStep4() { showStep(4); }
 
-// ===== STEP 4: COMPLETE =====
 function completeStep4() {
-  const result = document.getElementById('step4Result');
-  result.classList.add('show');
-  result.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const r = document.getElementById('step4Result');
+  r.classList.add('show');
+  r.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// ===== RESET =====
 function resetAll() {
   showStep(1);
+  importedData = [];
+  document.getElementById('importSummary').classList.remove('show');
+  document.getElementById('btnContinue1').disabled = true;
+  document.getElementById('dedupLoading').style.display = 'block';
   document.getElementById('dedupContent').style.display = 'none';
-  const dedupProg = document.getElementById('dedupProgress');
-  dedupProg.parentElement.style.display = 'block';
-  dedupProg.innerHTML = '正在比对字段...';
   document.getElementById('alertLoading').style.display = 'block';
   document.getElementById('alertContent').style.display = 'none';
   document.getElementById('step4Result').classList.remove('show');
 }
 </script>
-
 </body>
 </html>
