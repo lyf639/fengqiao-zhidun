@@ -3,17 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>枫桥智盾 · 基层矛盾纠纷智能预警与化解平台</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
-</script>
+<title>枫桥智盾 · 功能演示</title>
 <style>
-/* ============================================================
-   FENGQIAO ZHIDUN · Government Authoritative Style
-   Palette: Deep Blue #0A1F3F · Gold #B8860B · Red #C41E3A
-   ============================================================ */
 :root {
   --navy-900: #0A1F3F;
-  --navy-800: #0F2B54;
   --navy-700: #1B3A6B;
   --navy-600: #2A5290;
   --gold: #B8860B;
@@ -21,7 +14,11 @@
   --gold-pale: #FBF4E0;
   --red: #C41E3A;
   --red-pale: #FEF0F2;
-  --warm-bg: #F5F3EF;
+  --orange: #E67E22;
+  --orange-pale: #FFF8F0;
+  --green: #1E8449;
+  --green-pale: #EEFAF3;
+  --bg: #F5F3EF;
   --white: #FFFFFF;
   --gray-100: #F0EDE8;
   --gray-200: #E2DDD6;
@@ -31,681 +28,53 @@
   --font-display: "Noto Serif SC", "SimSun", "STSong", serif;
   --font-body: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Consolas", monospace;
-  --shadow-card: 0 1px 3px rgba(10,31,63,0.06), 0 1px 2px rgba(10,31,63,0.04);
-  --shadow-elevated: 0 4px 16px rgba(10,31,63,0.08), 0 2px 4px rgba(10,31,63,0.04);
   --radius: 4px;
   --radius-lg: 8px;
-  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
-
 body {
   font-family: var(--font-body);
-  background: var(--warm-bg);
+  background: var(--bg);
   color: var(--gray-800);
   line-height: 1.7;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
 
-/* ---------- TOP BAR ---------- */
-.topbar {
-  background: var(--navy-900);
-  color: var(--white);
-  padding: 0 48px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* ---- Progress Bar ---- */
+.progress-bar-wrap {
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 20px 48px;
   position: sticky;
   top: 0;
-  z-index: 100;
-  box-shadow: 0 2px 20px rgba(10,31,63,0.25);
+  z-index: 50;
 }
 
-.topbar-left {
+.progress-steps {
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-.shield {
-  width: 38px;
-  height: 44px;
-  position: relative;
-}
-
-.shield svg { width: 100%; height: 100%; }
-
-.topbar-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 2px;
-  color: var(--white);
-}
-
-.topbar-title span { color: var(--gold-light); }
-
-.topbar-subtitle {
-  font-size: 12px;
-  color: rgba(255,255,255,0.55);
-  letter-spacing: 1px;
-}
-
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.55);
-}
-
-.topbar-badge {
-  background: rgba(196,30,58,0.15);
-  color: #FAA0A0;
-  padding: 4px 14px;
-  border-radius: 2px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  border: 1px solid rgba(196,30,58,0.3);
-}
-
-/* ---------- TAB NAVIGATION ---------- */
-.tab-nav {
-  background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
-  padding: 0 48px;
-  display: flex;
+  justify-content: center;
   gap: 0;
-  position: sticky;
-  top: 64px;
-  z-index: 99;
-}
-
-.tab-btn {
-  padding: 16px 28px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--gray-600);
-  background: none;
-  border: none;
-  cursor: pointer;
-  position: relative;
-  transition: var(--transition);
-  letter-spacing: 0.5px;
-  font-family: var(--font-body);
-}
-
-.tab-btn:hover { color: var(--navy-700); }
-
-.tab-btn.active {
-  color: var(--navy-900);
-}
-
-.tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 28px;
-  right: 28px;
-  height: 3px;
-  background: var(--gold);
-  border-radius: 3px 3px 0 0;
-}
-
-/* ---------- MAIN CONTENT ---------- */
-.main-content {
-  max-width: 1200px;
+  max-width: 800px;
   margin: 0 auto;
-  padding: 0 48px 80px;
 }
 
-.tab-panel { display: none; animation: fadeSlideIn 0.4s ease; }
-.tab-panel.active { display: block; }
-
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ========== OVERVIEW TAB ========== */
-
-/* Hero */
-.hero {
-  padding: 72px 0 56px;
-  text-align: center;
-  border-bottom: 1px solid var(--gray-200);
-}
-
-.hero h1 {
-  font-family: var(--font-display);
-  font-size: 52px;
-  font-weight: 900;
-  color: var(--navy-900);
-  letter-spacing: 6px;
-  line-height: 1.2;
-}
-
-.hero h1 .gold { color: var(--gold); }
-
-.hero .tagline {
-  font-family: var(--font-display);
-  font-size: 18px;
-  color: var(--gray-600);
-  margin-top: 16px;
-  letter-spacing: 2px;
-  font-weight: 400;
-}
-
-.hero .positioning {
-  margin-top: 24px;
-  font-size: 15px;
-  color: var(--gray-400);
-  max-width: 640px;
-  margin-left: auto;
-  margin-right: auto;
-  line-height: 1.8;
-}
-
-/* Stat Strip */
-.stat-strip {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1px;
-  background: var(--gray-200);
-  margin: 48px 0;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.stat-item {
-  background: var(--white);
-  padding: 32px 28px;
-  text-align: center;
-}
-
-.stat-value {
-  font-family: var(--font-mono);
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--navy-900);
-  letter-spacing: -1px;
-}
-
-.stat-value.gold { color: var(--gold); }
-
-.stat-label {
-  font-size: 13px;
-  color: var(--gray-400);
-  margin-top: 6px;
-  letter-spacing: 0.5px;
-}
-
-/* Section Header */
-.section-header {
-  text-align: center;
-  margin: 64px 0 40px;
-}
-
-.section-header h2 {
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--navy-900);
-  letter-spacing: 3px;
-}
-
-.section-header .divider {
-  width: 48px;
-  height: 3px;
-  background: var(--gold);
-  margin: 16px auto 0;
-  border-radius: 2px;
-}
-
-/* Pain-Solution */
-.pain-solution {
-  display: grid;
-  grid-template-columns: 1fr 80px 1fr;
-  gap: 0;
-  align-items: start;
-}
-
-.pain-col, .solution-col {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.arrow-col {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  align-items: center;
-  padding-top: 24px;
-}
-
-.arrow-item {
-  height: 68px;
+.progress-step {
   display: flex;
   align-items: center;
-}
-
-.arrow-item svg { width: 40px; height: 40px; }
-
-.pain-card, .solution-card {
-  padding: 20px 24px;
-  border-radius: var(--radius-lg);
-  transition: var(--transition);
-  border: 1px solid transparent;
-}
-
-.pain-card {
-  background: var(--white);
-  border-left: 3px solid var(--gray-400);
-}
-
-.pain-card:hover { border-color: var(--gray-400); }
-
-.pain-card .card-label {
-  font-size: 11px;
-  color: var(--red);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.pain-card .card-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--gray-800);
-  margin-top: 6px;
-}
-
-.pain-card .card-desc {
-  font-size: 13px;
-  color: var(--gray-400);
-  margin-top: 4px;
-}
-
-.solution-card {
-  background: var(--white);
-  border-left: 3px solid var(--gold);
-}
-
-.solution-card:hover { border-color: var(--gold); box-shadow: var(--shadow-elevated); }
-
-.solution-card .card-label {
-  font-size: 11px;
-  color: var(--gold);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.solution-card .card-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--navy-900);
-  margin-top: 6px;
-}
-
-.solution-card .card-desc {
-  font-size: 13px;
-  color: var(--gray-600);
-  margin-top: 4px;
-}
-
-/* Architecture */
-.arch-stack {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.arch-card {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  padding: 28px 20px;
-  text-align: center;
-  border-top: 3px solid var(--navy-600);
-  transition: var(--transition);
-}
-
-.arch-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-elevated); }
-
-.arch-card:nth-child(1) { border-top-color: var(--navy-600); }
-.arch-card:nth-child(2) { border-top-color: var(--gold); }
-.arch-card:nth-child(3) { border-top-color: var(--red); }
-.arch-card:nth-child(4) { border-top-color: var(--gray-400); }
-
-.arch-icon { font-size: 32px; margin-bottom: 12px; }
-.arch-title { font-size: 15px; font-weight: 700; color: var(--navy-900); letter-spacing: 1px; }
-.arch-desc { font-size: 12px; color: var(--gray-400); margin-top: 8px; line-height: 1.6; }
-
-/* ========== COMMON COMPONENTS ========== */
-
-/* Data comparison table */
-.compare-table {
-  width: 100%;
-  border-collapse: collapse;
+  gap: 10px;
   font-size: 14px;
-}
-
-.compare-table thead th {
-  background: var(--navy-900);
-  color: var(--white);
-  padding: 14px 20px;
-  text-align: left;
+  color: var(--gray-400);
   font-weight: 600;
-  letter-spacing: 1px;
-  font-size: 13px;
-}
-
-.compare-table thead th:first-child { border-radius: var(--radius) 0 0 0; }
-.compare-table thead th:last-child { border-radius: 0 var(--radius) 0 0; }
-
-.compare-table tbody td {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--gray-200);
-  background: var(--white);
-}
-
-.compare-table tbody tr:last-child td:first-child { border-radius: 0 0 0 var(--radius); }
-.compare-table tbody tr:last-child td:last-child { border-radius: 0 0 var(--radius) 0; }
-
-.compare-table .highlight {
-  color: var(--gold);
-  font-weight: 700;
-  font-family: var(--font-mono);
-}
-
-.compare-table .metric-before { color: var(--gray-400); }
-.compare-table .metric-after { color: var(--navy-700); font-weight: 600; }
-
-/* Flow steps */
-.flow-steps {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-  margin: 40px 0;
-}
-
-.flow-step {
-  flex: 1;
-  text-align: center;
-  position: relative;
-  padding: 0 12px;
-}
-
-.flow-step::after {
-  content: '';
-  position: absolute;
-  top: 28px;
-  right: -8px;
-  width: 16px;
-  height: 16px;
-  border-top: 2px solid var(--gold);
-  border-right: 2px solid var(--gold);
-  transform: rotate(45deg);
-}
-
-.flow-step:last-child::after { display: none; }
-
-.flow-step .step-num {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--navy-900);
-  color: var(--white);
-  font-family: var(--font-mono);
-  font-size: 20px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 14px;
-}
-
-.flow-step:nth-child(1) .step-num { background: var(--navy-900); }
-.flow-step:nth-child(2) .step-num { background: var(--navy-700); }
-.flow-step:nth-child(3) .step-num { background: var(--navy-600); }
-.flow-step:nth-child(4) .step-num { background: var(--gold); }
-.flow-step:nth-child(5) .step-num { background: var(--gray-600); }
-
-.flow-step .step-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--navy-900);
-  margin-bottom: 6px;
-}
-
-.flow-step .step-desc {
-  font-size: 12px;
-  color: var(--gray-400);
-  line-height: 1.5;
-}
-
-/* Alert levels */
-.alert-levels {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 40px;
-}
-
-.alert-card {
-  padding: 28px 24px;
-  border-radius: var(--radius-lg);
-  text-align: center;
-  border: 1px solid transparent;
   transition: var(--transition);
+  cursor: default;
 }
 
-.alert-card.red {
-  background: var(--red-pale);
-  border-color: rgba(196,30,58,0.2);
-}
-
-.alert-card.orange {
-  background: #FFF8F0;
-  border-color: rgba(230,126,34,0.2);
-}
-
-.alert-card.yellow {
-  background: var(--gold-pale);
-  border-color: rgba(184,134,11,0.2);
-}
-
-.alert-card .alert-icon { font-size: 36px; margin-bottom: 10px; }
-.alert-card .alert-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
-.alert-card.red .alert-title { color: var(--red); }
-.alert-card.orange .alert-title { color: #E67E22; }
-.alert-card.yellow .alert-title { color: var(--gold); }
-.alert-card .alert-count { font-family: var(--font-mono); font-size: 48px; font-weight: 800; margin: 8px 0; }
-.alert-card .alert-desc { font-size: 13px; color: var(--gray-400); line-height: 1.5; }
-
-/* Channel cross diagram */
-.channel-cross {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  padding: 32px 0;
-}
-
-.channel-node {
-  width: 100px;
-  height: 100px;
-  border-radius: 50%;
-  background: var(--white);
-  border: 2px solid var(--navy-600);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--navy-700);
-  transition: var(--transition);
-  text-align: center;
-  line-height: 1.3;
-}
-
-.channel-node.center {
-  width: 120px;
-  height: 120px;
-  border-color: var(--gold);
-  background: var(--gold-pale);
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--gold-dark, #8B6914);
-  box-shadow: 0 0 0 8px rgba(184,134,11,0.08);
-}
-
-.channel-node .ch-icon { font-size: 24px; margin-bottom: 4px; }
-
-/* Person card */
-.person-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-}
-
-.person-card {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--gray-200);
-  transition: var(--transition);
-}
-
-.person-card:hover { box-shadow: var(--shadow-elevated); }
-
-.person-card .pc-header {
-  padding: 20px 24px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border-bottom: 1px solid var(--gray-200);
-}
-
-.pc-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--white);
-  flex-shrink: 0;
-}
-
-.pc-avatar.risk-high { background: var(--red); }
-.pc-avatar.risk-mid { background: #E67E22; }
-.pc-avatar.risk-low { background: var(--navy-600); }
-
-.pc-info .pc-name { font-size: 16px; font-weight: 700; }
-.pc-info .pc-type { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
-
-.pc-body { padding: 20px 24px; }
-
-.pc-timeline { list-style: none; border-left: 2px solid var(--gray-200); padding-left: 16px; }
-
-.pc-timeline li {
-  position: relative;
-  padding-bottom: 16px;
-  font-size: 13px;
-  color: var(--gray-600);
-}
-
-.pc-timeline li:last-child { padding-bottom: 0; }
-
-.pc-timeline li::before {
-  content: '';
-  position: absolute;
-  left: -21px;
-  top: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--navy-600);
-}
-
-.pc-timeline li .tl-date {
-  font-size: 11px;
-  color: var(--gray-400);
-  display: block;
-}
-
-.pc-footer {
-  padding: 14px 24px;
-  background: var(--gray-100);
-  font-size: 12px;
-  color: var(--gray-600);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.pc-footer .urgent { color: var(--red); font-weight: 700; }
-
-/* Tag */
-.tag {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 2px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-.tag-red { background: var(--red-pale); color: var(--red); }
-.tag-gold { background: var(--gold-pale); color: var(--gold); }
-.tag-blue { background: #E8EEF5; color: var(--navy-700); }
-
-/* ========== DEMO TAB ========== */
-.demo-container {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 32px 0;
-}
-
-.demo-step {
-  background: var(--white);
-  border-radius: var(--radius-lg);
-  padding: 28px 32px;
-  margin-bottom: 20px;
-  border: 1px solid var(--gray-200);
-  transition: var(--transition);
-}
-
-.demo-step.active-step {
-  border-color: var(--gold);
-  box-shadow: var(--shadow-elevated);
-}
-
-.demo-step.completed {
-  opacity: 0.7;
-  border-color: var(--gray-200);
-}
-
-.demo-step-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.demo-step-num {
+.progress-step .dot {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -713,19 +82,92 @@ body {
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
+  background: var(--gray-200);
+  color: var(--gray-400);
+  transition: var(--transition);
   flex-shrink: 0;
 }
 
-.active-step .demo-step-num { background: var(--gold); color: var(--white); }
-.completed .demo-step-num { background: var(--gray-400); color: var(--white); }
+.progress-step.current { color: var(--navy-900); }
+.progress-step.current .dot { background: var(--navy-900); color: var(--white); }
+.progress-step.done { color: var(--green); }
+.progress-step.done .dot { background: var(--green); color: var(--white); }
 
-.demo-step-title { font-size: 16px; font-weight: 700; color: var(--navy-900); }
+.progress-line {
+  width: 48px;
+  height: 2px;
+  background: var(--gray-200);
+  margin: 0 8px;
+  transition: var(--transition);
+}
 
-.demo-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.progress-line.done { background: var(--green); }
 
-.demo-form input, .demo-form select {
+/* ---- Main Container ---- */
+.main-container {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+/* ---- Step Panel ---- */
+.step-panel {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  padding: 40px 44px;
+  box-shadow: 0 1px 3px rgba(10,31,63,0.06);
+  animation: fadeSlideIn 0.4s ease;
+  display: none;
+}
+
+.step-panel.active { display: block; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.step-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--navy-900);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+.step-subtitle {
+  font-size: 14px;
+  color: var(--gray-400);
+  margin-bottom: 32px;
+}
+
+/* ---- Form ---- */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-grid .full { grid-column: 1 / -1; }
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-600);
+  letter-spacing: 0.5px;
+}
+
+.form-group label .required { color: var(--red); }
+
+.form-group input,
+.form-group select,
+.form-group textarea {
   padding: 10px 14px;
   border: 1px solid var(--gray-200);
   border-radius: var(--radius);
@@ -733,25 +175,34 @@ body {
   font-family: var(--font-body);
   background: var(--white);
   transition: var(--transition);
+  color: var(--gray-800);
 }
 
-.demo-form input:focus, .demo-form select:focus {
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: var(--navy-600);
   box-shadow: 0 0 0 3px rgba(26,58,107,0.08);
 }
 
-.demo-form .full-width { grid-column: 1 / -1; }
+.form-group textarea { resize: vertical; min-height: 80px; }
 
+.form-hint {
+  font-size: 12px;
+  color: var(--gray-400);
+}
+
+/* ---- Buttons ---- */
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 24px;
+  gap: 8px;
+  padding: 12px 28px;
   border-radius: var(--radius);
   font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
   cursor: pointer;
   border: none;
   transition: var(--transition);
@@ -759,686 +210,696 @@ body {
 }
 
 .btn-primary { background: var(--navy-900); color: var(--white); }
-.btn-primary:hover { background: var(--navy-700); }
+.btn-primary:hover { background: var(--navy-700); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,31,63,0.2); }
+
+.btn-outline { background: transparent; border: 1px solid var(--gray-400); color: var(--gray-600); }
+.btn-outline:hover { border-color: var(--navy-600); color: var(--navy-700); }
 
 .btn-gold { background: var(--gold); color: var(--white); }
 .btn-gold:hover { background: var(--gold-light); }
 
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--gray-400);
-  color: var(--gray-600);
-}
-.btn-outline:hover { border-color: var(--navy-600); color: var(--navy-700); }
+.btn-danger { background: var(--red); color: var(--white); }
+.btn-danger:hover { background: #A01830; }
 
-.demo-result {
-  background: var(--gold-pale);
-  padding: 16px 20px;
-  border-radius: var(--radius);
-  border: 1px solid rgba(184,134,11,0.2);
-  font-size: 14px;
-  margin-top: 12px;
+.btn-sm { padding: 8px 16px; font-size: 13px; letter-spacing: 0.5px; }
+
+.btn-row { display: flex; gap: 12px; margin-top: 28px; }
+
+/* ---- Result Box ---- */
+.result-box {
+  margin-top: 24px;
+  padding: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: fadeSlideIn 0.5s ease;
   display: none;
 }
 
-.demo-result.show { display: block; }
+.result-box.show { display: block; }
 
-.demo-result.alert-result {
-  background: var(--red-pale);
-  border-color: rgba(196,30,58,0.2);
-}
-
-/* ========== FOOTER ========== */
-.footer {
-  background: var(--navy-900);
-  color: rgba(255,255,255,0.6);
-  padding: 40px 48px;
+.result-box-header {
+  padding: 14px 20px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
-}
-
-.footer-left { font-size: 13px; line-height: 1.8; }
-.footer-left strong { color: var(--white); }
-
-.tech-badges {
-  display: flex;
   gap: 10px;
-  flex-wrap: wrap;
+  font-weight: 700;
+  font-size: 15px;
 }
 
-.tech-badge {
-  padding: 6px 16px;
-  border-radius: 20px;
-  font-size: 12px;
+.result-box-body { padding: 20px 24px; }
+
+.result-box.info    { border: 1px solid rgba(42,82,144,0.2); }
+.result-box.info .result-box-header { background: #E8EEF5; color: var(--navy-700); }
+.result-box.info .result-box-body   { background: #F5F8FC; }
+
+.result-box.warning { border: 1px solid rgba(230,126,34,0.2); }
+.result-box.warning .result-box-header { background: var(--orange-pale); color: var(--orange); }
+.result-box.warning .result-box-body   { background: #FFFDF8; }
+
+.result-box.danger  { border: 1px solid rgba(196,30,58,0.2); }
+.result-box.danger .result-box-header { background: var(--red-pale); color: var(--red); }
+.result-box.danger .result-box-body   { background: #FFFCFC; }
+
+.result-box.success { border: 1px solid rgba(30,132,73,0.2); }
+.result-box.success .result-box-header { background: var(--green-pale); color: var(--green); }
+.result-box.success .result-box-body   { background: #F8FCFA; }
+
+/* ---- Score Bar ---- */
+.score-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.score-bar-label {
+  font-size: 13px;
   font-weight: 600;
+  color: var(--gray-600);
+  width: 100px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.score-bar-track {
+  flex: 1;
+  height: 10px;
+  background: var(--gray-200);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.8s ease;
+}
+
+.score-bar-value {
+  width: 60px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+/* ---- Tag ---- */
+.tag {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.5px;
-  border: 1px solid rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.7);
 }
 
-.tech-badge.highlight {
-  border-color: var(--gold-light);
-  color: var(--gold-light);
-  background: rgba(184,134,11,0.1);
+.tag-red { background: var(--red-pale); color: var(--red); }
+.tag-orange { background: var(--orange-pale); color: var(--orange); }
+.tag-gold { background: var(--gold-pale); color: var(--gold); }
+.tag-green { background: var(--green-pale); color: var(--green); }
+.tag-blue { background: #E8EEF5; color: var(--navy-700); }
+
+/* ---- Match Item ---- */
+.match-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--gray-200);
 }
 
-/* ========== RESPONSIVE ========== */
-@media (max-width: 1024px) {
-  .stat-strip { grid-template-columns: repeat(2, 1fr); }
-  .pain-solution { grid-template-columns: 1fr; }
-  .arrow-col { display: none; }
-  .arch-stack { grid-template-columns: repeat(2, 1fr); }
-  .flow-steps { flex-wrap: wrap; }
-  .flow-step { flex: 0 0 33%; margin-bottom: 24px; }
-  .flow-step::after { display: none; }
-  .person-grid { grid-template-columns: 1fr; }
-  .alert-levels { grid-template-columns: 1fr; }
+.match-item:last-child { border-bottom: none; }
+
+.match-status {
+  width: 80px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
 }
 
+.match-status.dup { color: var(--red); }
+.match-status.unique { color: var(--green); }
+
+.match-detail { flex: 1; font-size: 13px; color: var(--gray-600); }
+
+.match-detail strong { color: var(--gray-800); }
+
+/* ---- Alert Channel Tags ---- */
+.channel-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+/* ---- Timeline ---- */
+.timeline {
+  border-left: 2px solid var(--gray-200);
+  padding-left: 20px;
+  margin-left: 8px;
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 20px;
+}
+
+.timeline-item:last-child { padding-bottom: 0; }
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -27px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--navy-600);
+}
+
+.timeline-item.completed::before { background: var(--green); }
+.timeline-item.active::before { background: var(--gold); box-shadow: 0 0 0 4px rgba(184,134,11,0.2); }
+
+.timeline-date {
+  font-size: 12px;
+  color: var(--gray-400);
+  font-family: var(--font-mono);
+}
+
+.timeline-content {
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* ---- Confirm Dialog ---- */
+.confirm-card {
+  background: var(--gray-100);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-top: 16px;
+}
+
+.confirm-card .confirm-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy-900);
+  margin-bottom: 12px;
+}
+
+.confirm-card .confirm-row {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  padding: 8px 0;
+}
+
+.confirm-card .confirm-row .label {
+  width: 80px;
+  color: var(--gray-400);
+  flex-shrink: 0;
+}
+
+.confirm-card .confirm-row .value { color: var(--gray-800); font-weight: 600; }
+
+/* ---- Stats Row ---- */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.stat-mini {
+  text-align: center;
+  padding: 20px 16px;
+  background: var(--gray-100);
+  border-radius: var(--radius-lg);
+}
+
+.stat-mini .stat-val {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--navy-900);
+}
+
+.stat-mini .stat-lbl {
+  font-size: 12px;
+  color: var(--gray-400);
+  margin-top: 4px;
+}
+
+/* ---- Responsive ---- */
 @media (max-width: 640px) {
-  .topbar { padding: 0 20px; }
-  .main-content { padding: 0 20px 40px; }
-  .hero h1 { font-size: 32px; letter-spacing: 3px; }
-  .stat-strip { grid-template-columns: 1fr; }
-  .arch-stack { grid-template-columns: 1fr; }
-  .tab-nav { padding: 0 12px; overflow-x: auto; }
-  .tab-btn { padding: 14px 16px; font-size: 13px; white-space: nowrap; }
-  .flow-step { flex: 0 0 50%; }
+  .form-grid { grid-template-columns: 1fr; }
+  .progress-bar-wrap { padding: 16px 20px; }
+  .progress-step span:last-child { display: none; }
+  .progress-line { width: 20px; }
+  .step-panel { padding: 24px 20px; }
+  .btn-row { flex-direction: column; }
+  .stats-row { grid-template-columns: 1fr; }
 }
 </style>
 </head>
 <body>
 
-<!-- ===== TOP BAR ===== -->
-<header class="topbar">
-  <div class="topbar-left">
-    <div class="shield">
-      <svg viewBox="0 0 38 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19 2L3 10v12c0 11.5 6.8 20.2 16 22 9.2-1.8 16-10.5 16-22V10L19 2z" fill="#B8860B" stroke="#D4A83A" stroke-width="1.5"/>
-        <path d="M15 20l3 4 6-7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-      </svg>
+<!-- ===== PROGRESS BAR ===== -->
+<div class="progress-bar-wrap">
+  <div class="progress-steps" id="progressSteps">
+    <div class="progress-step current" data-step="1">
+      <div class="dot">1</div>
+      <span>数据录入</span>
     </div>
-    <div>
-      <div class="topbar-title">枫桥<span>智盾</span></div>
-      <div class="topbar-subtitle">FENGQIAO ZHIDUN</div>
+    <div class="progress-line" data-line="1"></div>
+    <div class="progress-step" data-step="2">
+      <div class="dot">2</div>
+      <span>智能去重</span>
+    </div>
+    <div class="progress-line" data-line="2"></div>
+    <div class="progress-step" data-step="3">
+      <div class="dot">3</div>
+      <span>风险预警</span>
+    </div>
+    <div class="progress-line" data-line="3"></div>
+    <div class="progress-step" data-step="4">
+      <div class="dot">4</div>
+      <span>处置跟进</span>
     </div>
   </div>
-  <div class="topbar-right">
-    <span>嵊泗县综治中心</span>
-    <span>本地部署 · 数据不出域</span>
-    <span class="topbar-badge">● 系统运行中</span>
-  </div>
-</header>
+</div>
 
-<!-- ===== TAB NAVIGATION ===== -->
-<nav class="tab-nav" id="tabNav">
-  <button class="tab-btn active" data-tab="overview">总 览</button>
-  <button class="tab-btn" data-tab="dedup">智能去重</button>
-  <button class="tab-btn" data-tab="alert">风险预警</button>
-  <button class="tab-btn" data-tab="person">人员管理</button>
-  <button class="tab-btn" data-tab="demo">Demo 体验</button>
-</nav>
+<!-- ===== MAIN ===== -->
+<div class="main-container">
 
-<!-- ===== MAIN CONTENT ===== -->
-<main class="main-content" id="mainContent"></main>
+  <!-- ===== STEP 1: DATA ENTRY ===== -->
+  <div class="step-panel active" id="step1">
+    <div class="step-title">数据录入</div>
+    <div class="step-subtitle">模拟基层干部收到一条新的矛盾纠纷信息，录入系统</div>
 
-<!-- ===== FOOTER ===== -->
-<footer class="footer">
-  <div class="footer-left">
-    <strong>枫桥智盾</strong> · 基层矛盾纠纷智能预警与化解平台<br>
-    基于钉钉·悟空智能体 + DeepSeek-v4-pro 国产大模型<br>
-    本地化部署 · 数据不出域 · 全链路可审计
+    <div class="form-grid">
+      <div class="form-group">
+        <label><span class="required">*</span> 数据来源</label>
+        <select id="s1_source">
+          <option value="">请选择</option>
+          <option value="12345热线" selected>12345热线</option>
+          <option value="公安接警">公安接警</option>
+          <option value="信访平台">信访平台</option>
+          <option value="网格员上报">网格员上报</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label><span class="required">*</span> 事件类型</label>
+        <select id="s1_type">
+          <option value="">请选择</option>
+          <option value="邻里纠纷" selected>邻里纠纷</option>
+          <option value="家庭暴力">家庭暴力</option>
+          <option value="征地拆迁">征地拆迁</option>
+          <option value="物业矛盾">物业矛盾</option>
+          <option value="劳动争议">劳动争议</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label><span class="required">*</span> 当事人姓名</label>
+        <input type="text" id="s1_name" value="张建国" placeholder="请输入姓名">
+      </div>
+      <div class="form-group">
+        <label><span class="required">*</span> 联系电话</label>
+        <input type="tel" id="s1_phone" value="13812346789" placeholder="请输入联系电话">
+      </div>
+      <div class="form-group full">
+        <label><span class="required">*</span> 事发地址</label>
+        <input type="text" id="s1_addr" value="嵊泗县菜园镇海滨路12号" placeholder="请输入详细地址">
+      </div>
+      <div class="form-group full">
+        <label><span class="required">*</span> 事项描述</label>
+        <textarea id="s1_desc" placeholder="请简要描述纠纷情况...">反映邻居王某装修房屋导致自家墙体开裂，多次沟通无果，要求协调赔偿。双方情绪激动，曾发生口角。</textarea>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="submitStep1()">提交录入</button>
+      <span class="form-hint" style="align-self:center;">系统将自动提取关键字段，进入智能去重</span>
+    </div>
   </div>
-  <div class="tech-badges">
-    <span class="tech-badge highlight">钉钉·悟空智能体</span>
-    <span class="tech-badge">DeepSeek-v4-pro</span>
-    <span class="tech-badge">本地数据库</span>
-    <span class="tech-badge">政务专网部署</span>
+
+  <!-- ===== STEP 2: DEDUP ===== -->
+  <div class="step-panel" id="step2">
+    <div class="step-title">智能去重</div>
+    <div class="step-subtitle">系统自动比对存量数据，识别重复事件，避免多头录入</div>
+
+    <div style="padding:24px;background:var(--gray-100);border-radius:var(--radius-lg);margin-bottom:20px;">
+      <div style="font-size:14px;font-weight:600;color:var(--gray-600);margin-bottom:16px;">📋 系统正在检索存量数据中的相似记录...</div>
+      <div id="dedupProgress" style="font-size:13px;color:var(--gray-400);">正在比对字段...</div>
+    </div>
+
+    <div id="dedupContent" style="display:none;">
+      <div class="result-box warning show" style="margin-top:0;margin-bottom:24px;">
+        <div class="result-box-header">⚠ 发现高度相似记录</div>
+        <div class="result-box-body">
+          <div class="match-item">
+            <div class="match-status dup">疑似重复 #1</div>
+            <div class="match-detail">
+              <strong>张建国</strong> · 13812346789 · 菜园镇海滨路<br>
+              <span style="color:var(--gray-400);">来源：公安接警 · 邻里纠纷 · 2026-06-28</span>
+            </div>
+          </div>
+          <div class="match-item">
+            <div class="match-status dup">疑似重复 #2</div>
+            <div class="match-detail">
+              <strong>张建国</strong> · 138****6789 · 菜园镇海滨路12号<br>
+              <span style="color:var(--gray-400);">来源：信访平台 · 邻里纠纷 · 2026-06-25</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:15px;font-weight:700;color:var(--navy-900);margin-bottom:16px;">📊 多维度加权评分</div>
+      <div id="scoreBars"></div>
+
+      <div style="margin-top:20px;padding:20px;background:var(--red-pale);border-radius:var(--radius-lg);border-left:3px solid var(--red);">
+        <div style="font-size:16px;font-weight:800;color:var(--red);">综合评分：<span style="font-family:var(--font-mono);font-size:32px;" id="totalScore">92</span> 分</div>
+        <div style="font-size:13px;color:var(--gray-600);margin-top:6px;">阈值 85 分，该记录被判定为<strong>高度疑似重复</strong>，建议合并处理</div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="confirmDedup()">✅ 确认重复，合并至已有记录</button>
+        <button class="btn btn-outline" onclick="rejectDedup()">↩ 判定为新事件，独立录入</button>
+      </div>
+    </div>
   </div>
-</footer>
+
+  <!-- ===== STEP 3: ALERT ===== -->
+  <div class="step-panel" id="step3">
+    <div class="step-title">风险预警</div>
+    <div class="step-subtitle">跨渠道关联分析，自动判定风险等级并推送预警</div>
+
+    <div id="alertLoading" style="padding:24px;background:var(--gray-100);border-radius:var(--radius-lg);margin-bottom:20px;font-size:14px;color:var(--gray-600);">
+      🔍 正在执行跨渠道关联分析...
+    </div>
+
+    <div id="alertContent" style="display:none;">
+      <div class="result-box danger show" style="margin-top:0;margin-bottom:24px;">
+        <div class="result-box-header">🔴 红色预警 — 请立即处置</div>
+        <div class="result-box-body">
+          <div style="font-size:14px;margin-bottom:12px;">当事人 <strong>张建国</strong> 在以下 <strong>4 个渠道</strong> 均有记录：</div>
+          <div class="channel-tags">
+            <span class="tag tag-red">12345热线</span>
+            <span class="tag tag-red">公安接警</span>
+            <span class="tag tag-red">信访平台</span>
+            <span class="tag tag-red">网格员上报</span>
+          </div>
+          <div style="font-size:13px;color:var(--gray-600);line-height:1.8;">
+            触发规则：跨 4 个及以上渠道关联<br>
+            涉及关键词：情绪激动 · 曾发生口角<br>
+            风险判断：有矛盾升级风险，建议立即介入调解
+          </div>
+        </div>
+      </div>
+
+      <div class="confirm-card">
+        <div class="confirm-title">📋 关联事件全貌</div>
+        <div class="confirm-row"><span class="label">12345热线</span><span class="value">2026-07-02 · 反映邻居装修纠纷</span></div>
+        <div class="confirm-row"><span class="label">公安接警</span><span class="value">2026-06-28 · 邻里冲突报警</span></div>
+        <div class="confirm-row"><span class="label">信访平台</span><span class="value">2026-06-25 · 物业矛盾投诉</span></div>
+        <div class="confirm-row"><span class="label">网格员上报</span><span class="value">2026-06-20 · 走访发现纠纷苗头</span></div>
+      </div>
+
+      <div style="margin-top:20px;padding:16px 20px;background:var(--gold-pale);border-radius:var(--radius-lg);border-left:3px solid var(--gold);font-size:14px;">
+        <strong>🔔 系统已自动推送：</strong>红色预警已通过钉钉通知综治中心负责人，预计 2 分钟内送达。请关注处置进展。
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-danger" onclick="goToStep4()">📋 进入处置跟进</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STEP 4: FOLLOW-UP ===== -->
+  <div class="step-panel" id="step4">
+    <div class="step-title">处置跟进</div>
+    <div class="step-subtitle">记录处置过程，跟踪闭环，形成完整的化解档案</div>
+
+    <div class="stats-row">
+      <div class="stat-mini">
+        <div class="stat-val" style="color:var(--red);">4</div>
+        <div class="stat-lbl">关联渠道</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-val" style="color:var(--orange);">2天</div>
+        <div class="stat-lbl">预警提前量</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-val" style="color:var(--green);">高风险</div>
+        <div class="stat-lbl">评估等级</div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="timeline-item completed">
+        <div class="timeline-date">2026-06-20</div>
+        <div class="timeline-content">网格员首次走访发现纠纷苗头，记录入库</div>
+      </div>
+      <div class="timeline-item completed">
+        <div class="timeline-date">2026-06-25</div>
+        <div class="timeline-content">信访平台收到投诉，系统自动关联标记</div>
+      </div>
+      <div class="timeline-item completed">
+        <div class="timeline-date">2026-06-28</div>
+        <div class="timeline-content">公安接警处置邻里冲突，跨渠道关联触发橙色预警</div>
+      </div>
+      <div class="timeline-item completed">
+        <div class="timeline-date">2026-07-02</div>
+        <div class="timeline-content">12345热线新增工单，4渠道关联触发 <span class="tag tag-red">红色预警</span></div>
+      </div>
+      <div class="timeline-item active">
+        <div class="timeline-date">当前 · 待处置</div>
+        <div class="timeline-content">
+          <strong>← 当前节点：</strong>等待综治中心指派调解员介入
+        </div>
+      </div>
+    </div>
+
+    <div class="confirm-card" style="margin-top:24px;">
+      <div class="confirm-title">📝 处置记录</div>
+      <div class="form-grid" style="margin-top:12px;">
+        <div class="form-group">
+          <label>处置方式</label>
+          <select id="s4_method">
+            <option>上门调解</option>
+            <option>约谈双方</option>
+            <option>部门联动</option>
+            <option>法律途径</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>责任单位</label>
+          <select id="s4_dept">
+            <option>综治中心</option>
+            <option>司法所</option>
+            <option>派出所</option>
+            <option>社区居委会</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>处置时限</label>
+          <input type="text" id="s4_deadline" value="2026-07-05（3个工作日内）">
+        </div>
+        <div class="form-group">
+          <label>责任人</label>
+          <input type="text" id="s4_person" value="刘主任">
+        </div>
+        <div class="form-group full">
+          <label>处置意见</label>
+          <textarea id="s4_opinion">建议由司法所牵头，联合社区居委会上门调解。重点协调王某装修赔偿事宜，同时关注双方情绪，防止矛盾进一步激化。</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="completeStep4()">✅ 提交处置方案 · 完成闭环</button>
+    </div>
+
+    <div class="result-box success" id="step4Result" style="margin-top:24px;">
+      <div class="result-box-header">✅ 处置方案已提交，事件进入跟踪闭环</div>
+      <div class="result-box-body">
+        <p style="font-size:14px;color:var(--gray-600);">
+          系统将持续跟踪处置进度，到期自动提醒。处置完成后将自动生成化解档案，纳入季度统计分析。
+        </p>
+        <div style="margin-top:16px;font-size:13px;color:var(--gray-400);">
+          <strong>完整闭环链路：</strong><br>
+          网格员走访发现 → 信访投诉 → 公安接警 → 12345热线新增 → <span style="color:var(--red);">智能去重合并</span> → <span style="color:var(--red);">跨渠道关联</span> → <span style="color:var(--red);">红色预警触发</span> → <span style="color:var(--green);">指派调解员处置</span> → <span style="color:var(--green);">跟踪闭环归档</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;text-align:center;">
+      <button class="btn btn-outline btn-sm" onclick="resetAll()">🔄 重置演示</button>
+    </div>
+  </div>
+
+</div>
 
 <script>
-// ===== TAB SWITCHING =====
-const tabBtns = document.querySelectorAll('.tab-btn');
-const mainContent = document.getElementById('mainContent');
-
-tabBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    tabBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    renderTab(btn.dataset.tab);
+// ===== PROGRESS HELPER =====
+function setProgress(current) {
+  document.querySelectorAll('.progress-step').forEach(el => {
+    const s = parseInt(el.dataset.step);
+    el.classList.remove('current', 'done');
+    if (s < current) el.classList.add('done');
+    if (s === current) el.classList.add('current');
   });
-});
-
-// ===== CHART TRACKER =====
-let chartInstances = [];
-
-function destroyCharts() {
-  chartInstances.forEach(c => c.destroy());
-  chartInstances = [];
+  document.querySelectorAll('.progress-line').forEach(el => {
+    const l = parseInt(el.dataset.line);
+    el.classList.toggle('done', l < current);
+  });
 }
 
-function safeChart(id, config) {
-  setTimeout(() => {
-    const el = document.getElementById(id);
-    if (el) chartInstances.push(new Chart(el, config));
-  }, 80);
+function showStep(n) {
+  document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('step' + n);
+  if (panel) panel.classList.add('active');
+  setProgress(n);
+  panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-// ===== TAB RENDERER =====
-function renderTab(tab) {
-  destroyCharts();
-  switch(tab) {
-    case 'overview': renderOverview(); break;
-    case 'dedup': renderDedup(); break;
-    case 'alert': renderAlert(); break;
-    case 'person': renderPerson(); break;
-    case 'demo': renderDemo(); break;
+// ===== STEP 1: SUBMIT =====
+function submitStep1() {
+  const name = document.getElementById('s1_name').value.trim();
+  const phone = document.getElementById('s1_phone').value.trim();
+  const addr = document.getElementById('s1_addr').value.trim();
+  const desc = document.getElementById('s1_desc').value.trim();
+  if (!name || !phone || !addr || !desc) {
+    alert('请完整填写所有必填字段');
+    return;
   }
+  showStep(2);
+  runDedupAnimation();
 }
 
-// ===== OVERVIEW =====
-function renderOverview() {
-  mainContent.innerHTML = `
-    <section class="hero">
-      <h1>枫桥<span class="gold">智盾</span></h1>
-      <div class="tagline">基层矛盾纠纷智能预警与化解平台</div>
-      <p class="positioning">践行新时代"枫桥经验"，以国产智能体技术赋能基层治理，实现矛盾纠纷"早发现、早预警、早化解"</p>
-    </section>
-
-    <div class="stat-strip">
-      <div class="stat-item">
-        <div class="stat-value">7</div>
-        <div class="stat-label">接入数据源</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value gold">386</div>
-        <div class="stat-label">智能去重识别（条）</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value">91.5<span style="font-size:20px;">%</span></div>
-        <div class="stat-label">预警准确率</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-value">4</div>
-        <div class="stat-label">已覆盖乡镇/街道</div>
-      </div>
-    </div>
-
-    <div class="section-header">
-      <h2>痛点 · 解法</h2>
-      <div class="divider"></div>
-    </div>
-
-    <div class="pain-solution">
-      <div class="pain-col">
-        <div class="pain-card">
-          <div class="card-label">痛点 01</div>
-          <div class="card-title">信息孤岛</div>
-          <div class="card-desc">12345、公安、信访等7个系统数据互相割裂，同一事件在不同渠道重复登记，难以掌握全貌</div>
-        </div>
-        <div class="pain-card">
-          <div class="card-label">痛点 02</div>
-          <div class="card-title">重复填报</div>
-          <div class="card-desc">基层干部需在多个系统重复录入同一事件，耗费大量精力，月均台账填报时间超12小时</div>
-        </div>
-        <div class="pain-card">
-          <div class="card-label">痛点 03</div>
-          <div class="card-title">被动响应</div>
-          <div class="card-desc">依赖人工经验判断风险，跨渠道关联难以发现，高风险事件平均滞后7天才有察觉</div>
-        </div>
-        <div class="pain-card">
-          <div class="card-label">痛点 04</div>
-          <div class="card-title">政策难找</div>
-          <div class="card-desc">困难群众涉及民政、残联、人社等多部门政策，人工逐一匹配效率低，常有遗漏</div>
-        </div>
-      </div>
-
-      <div class="arrow-col">
-        <div class="arrow-item"><svg viewBox="0 0 40 40"><path d="M8 20h20M22 14l6 6-6 6" stroke="#B8860B" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="arrow-item"><svg viewBox="0 0 40 40"><path d="M8 20h20M22 14l6 6-6 6" stroke="#B8860B" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="arrow-item"><svg viewBox="0 0 40 40"><path d="M8 20h20M22 14l6 6-6 6" stroke="#B8860B" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div class="arrow-item"><svg viewBox="0 0 40 40"><path d="M8 20h20M22 14l6 6-6 6" stroke="#B8860B" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      </div>
-
-      <div class="solution-col">
-        <div class="solution-card">
-          <div class="card-label">解法 01</div>
-          <div class="card-title">多源汇聚 · 一屏统览</div>
-          <div class="card-desc">接入7类数据源，统一标准化入库，形成"矛盾纠纷一张图"，彻底打破信息壁垒</div>
-        </div>
-        <div class="solution-card">
-          <div class="card-label">解法 02</div>
-          <div class="card-title">智能去重 · 自动归类</div>
-          <div class="card-desc">大模型多维加权评分（电话/地址/语义），去重率31%，月均减少386条重复工作量</div>
-        </div>
-        <div class="solution-card">
-          <div class="card-label">解法 03</div>
-          <div class="card-title">实时预警 · 主动出击</div>
-          <div class="card-desc">跨渠道关联规则引擎，红/橙/黄三级预警，高风险事件可提前7天发现并推送责任人</div>
-        </div>
-        <div class="solution-card">
-          <div class="card-label">解法 04</div>
-          <div class="card-title">政策匹配 · 精准推荐</div>
-          <div class="card-desc">结构化政策知识库 + 大模型语义匹配，输入人员特征即可秒级推荐适用政策及申请路径</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-header">
-      <h2>技术架构</h2>
-      <div class="divider"></div>
-    </div>
-
-    <div class="arch-stack">
-      <div class="arch-card">
-        <div class="arch-icon">🖥</div>
-        <div class="arch-title">用户交互层</div>
-        <div class="arch-desc">钉钉前端 · 可视化看板<br>矛盾纠纷视图 · 预警推送</div>
-      </div>
-      <div class="arch-card">
-        <div class="arch-icon">🧠</div>
-        <div class="arch-title">智能体编排层</div>
-        <div class="arch-desc">悟空智能体平台<br>6大Agent协同编排</div>
-      </div>
-      <div class="arch-card">
-        <div class="arch-icon">⚡</div>
-        <div class="arch-title">大模型服务层</div>
-        <div class="arch-desc">DeepSeek-v4-pro<br>NLP · 语义理解 · 报告生成</div>
-      </div>
-      <div class="arch-card">
-        <div class="arch-icon">💾</div>
-        <div class="arch-title">数据存储层</div>
-        <div class="arch-desc">本地数据库 · 政务专网<br>数据不出域 · 全链路审计</div>
-      </div>
-    </div>
-  `;
-}
-
-// ===== DEDUP TAB =====
-function renderDedup() {
-  mainContent.innerHTML = `
-    <div class="section-header">
-      <h2>智能去重算法流程</h2>
-      <div class="divider"></div>
-    </div>
-
-    <div class="flow-steps">
-      <div class="flow-step">
-        <div class="step-num">1</div>
-        <div class="step-title">提取关键字段</div>
-        <div class="step-desc">当事人姓名<br>联系电话<br>事发地址<br>事项关键词</div>
-      </div>
-      <div class="flow-step">
-        <div class="step-num">2</div>
-        <div class="step-title">模糊匹配</div>
-        <div class="step-desc">电话号码格式归一化<br>地址标准化处理<br>容错匹配</div>
-      </div>
-      <div class="flow-step">
-        <div class="step-num">3</div>
-        <div class="step-title">语义相似度</div>
-        <div class="step-desc">DeepSeek计算<br>事项描述语义相似度<br>综合维度评分</div>
-      </div>
-      <div class="flow-step">
-        <div class="step-num">4</div>
-        <div class="step-title">综合评分</div>
-        <div class="step-desc">电话 40% 权重<br>地址 30% 权重<br>语义 20% · 姓名 10%</div>
-      </div>
-      <div class="flow-step">
-        <div class="step-num">5</div>
-        <div class="step-title">人工确认</div>
-        <div class="step-desc">≥ 85 分自动判重<br>疑似重复推送确认<br>人机协同闭环</div>
-      </div>
-    </div>
-
-    <div class="section-header">
-      <h2>量化对比</h2>
-      <div class="divider"></div>
-    </div>
-
-    <table class="compare-table">
-      <thead>
-        <tr><th>指标</th><th>人工处理</th><th>枫桥智盾</th><th>提升幅度</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>单条比对耗时</td>
-          <td class="metric-before">约 2 分钟</td>
-          <td class="metric-after">秒级自动识别</td>
-          <td class="highlight">↓ 95%</td>
-        </tr>
-        <tr>
-          <td>100条处理时间</td>
-          <td class="metric-before">约 3.3 小时</td>
-          <td class="metric-after">约 5 分钟（含人工确认）</td>
-          <td class="highlight">↓ 97%</td>
-        </tr>
-        <tr>
-          <td>漏检率</td>
-          <td class="metric-before">约 15%（人工疲劳）</td>
-          <td class="metric-after">&lt; 3%（系统稳定）</td>
-          <td class="highlight">↓ 80%</td>
-        </tr>
-        <tr>
-          <td>报告数据准备</td>
-          <td class="metric-before">约 3 天</td>
-          <td class="metric-after">约 30 分钟自动生成</td>
-          <td class="highlight">↓ 94%</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="section-header">
-      <h2>去重维度权重</h2>
-      <div class="divider"></div>
-    </div>
-    <div style="max-width:480px;margin:0 auto;">
-      <canvas id="chartWeight" height="320"></canvas>
-    </div>
-  `;
-
-  safeChart('chartWeight', {
-    type: 'doughnut',
-    data: {
-      labels: ['电话匹配 (40%)', '地址匹配 (30%)', '语义相似度 (20%)', '姓名匹配 (10%)'],
-      datasets: [{
-        data: [40, 30, 20, 10],
-        backgroundColor: ['#1B3A6B', '#2A5290', '#D4A83A', '#9C968D'],
-        borderWidth: 0,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, pointStyleWidth: 10, font: { size: 13 } } }
-      }
+// ===== STEP 2: DEDUP ANIMATION =====
+function runDedupAnimation() {
+  const progressEl = document.getElementById('dedupProgress');
+  const contentEl = document.getElementById('dedupContent');
+  const steps = [
+    '提取关键字段：姓名=张建国，电话=13812346789，地址=菜园镇海滨路12号...',
+    '正在模糊匹配电话号码... 发现 2 条相似记录',
+    '正在标准化地址... 菜园镇海滨路12号 → 匹配成功',
+    '调用 DeepSeek 计算语义相似度... 事项描述高度相似',
+    '综合评分计算完成'
+  ];
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i < steps.length) {
+      progressEl.innerHTML = '⏳ ' + steps[i];
+      i++;
+    } else {
+      clearInterval(interval);
+      progressEl.parentElement.style.display = 'none';
+      contentEl.style.display = 'block';
+      animateScoreBars();
     }
-  });
+  }, 600);
 }
 
-// ===== ALERT TAB =====
-function renderAlert() {
-  mainContent.innerHTML = `
-    <div class="section-header">
-      <h2>三级预警体系</h2>
-      <div class="divider"></div>
-    </div>
+function animateScoreBars() {
+  const bars = [
+    { label: '电话匹配', value: 38, max: 40, color: 'var(--navy-600)' },
+    { label: '地址匹配', value: 28, max: 30, color: 'var(--navy-600)' },
+    { label: '语义相似度', value: 18, max: 20, color: 'var(--gold)' },
+    { label: '姓名匹配', value: 8, max: 10, color: 'var(--navy-600)' },
+  ];
 
-    <div class="alert-levels">
-      <div class="alert-card red">
-        <div class="alert-icon">🔴</div>
-        <div class="alert-title">红色预警</div>
-        <div class="alert-count" style="color:var(--red);">3</div>
-        <div class="alert-desc">跨 4 个及以上渠道关联<br>或涉及暴力倾向关键词<br>立即推送 · 领导督办</div>
+  const container = document.getElementById('scoreBars');
+  container.innerHTML = bars.map((b, idx) => `
+    <div class="score-bar-wrap">
+      <div class="score-bar-label">${b.label}</div>
+      <div class="score-bar-track">
+        <div class="score-bar-fill" id="bar${idx}" style="width:0;background:${b.color};"></div>
       </div>
-      <div class="alert-card orange">
-        <div class="alert-icon">🟠</div>
-        <div class="alert-title">橙色预警</div>
-        <div class="alert-count" style="color:#E67E22;">12</div>
-        <div class="alert-desc">跨 3 个渠道关联<br>或单一渠道30天内≥3次<br>2小时内推送责任人</div>
-      </div>
-      <div class="alert-card yellow">
-        <div class="alert-icon">🟡</div>
-        <div class="alert-title">黄色预警</div>
-        <div class="alert-count" style="color:#B8860B;">8</div>
-        <div class="alert-desc">跨 2 个渠道关联<br>或随访即将逾期<br>当日推送提醒</div>
-      </div>
+      <div class="score-bar-value">${b.value}/${b.max}分</div>
     </div>
+  `).join('');
 
-    <div class="section-header">
-      <h2>跨渠道关联预警示意</h2>
-      <div class="divider"></div>
-    </div>
+  setTimeout(() => {
+    bars.forEach((b, idx) => {
+      const fill = document.getElementById('bar' + idx);
+      if (fill) fill.style.width = (b.value / b.max * 100) + '%';
+    });
+  }, 100);
 
-    <div class="channel-cross">
-      <div class="channel-node"><span class="ch-icon">📞</span>12345热线</div>
-      <div class="channel-node"><span class="ch-icon">🚔</span>公安接警</div>
-      <div class="channel-node center"><span class="ch-icon">🔍</span>智能研判<br>引擎</div>
-      <div class="channel-node"><span class="ch-icon">📮</span>信访平台</div>
-      <div class="channel-node"><span class="ch-icon">📝</span>网格员上报</div>
-    </div>
-
-    <div class="section-header">
-      <h2>报告生成效率</h2>
-      <div class="divider"></div>
-    </div>
-
-    <table class="compare-table">
-      <thead>
-        <tr><th>指标</th><th>人工方式</th><th>系统辅助</th><th>提升</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>季度报告数据准备</td><td class="metric-before">3 天</td><td class="metric-after">30 分钟</td><td class="highlight">↓ 94%</td></tr>
-        <tr><td>报告撰写总时长</td><td class="metric-before">5 天</td><td class="metric-after">2 天（初稿自动生成）</td><td class="highlight">↓ 60%</td></tr>
-        <tr><td>数据错误率</td><td class="metric-before">约 5%（手工统计）</td><td class="metric-after">&lt; 1%（系统计算）</td><td class="highlight">↓ 80%</td></tr>
-        <tr><td>高风险提前发现</td><td class="metric-before">平均滞后 7 天</td><td class="metric-after">实时预警</td><td class="highlight">提前 7 天</td></tr>
-      </tbody>
-    </table>
-  `;
+  // Animate total score
+  const totalEl = document.getElementById('totalScore');
+  let count = 0;
+  const target = 92;
+  const timer = setInterval(() => {
+    count += 4;
+    if (count >= target) { count = target; clearInterval(timer); }
+    totalEl.textContent = count;
+  }, 40);
 }
 
-// ===== PERSON TAB =====
-function renderPerson() {
-  mainContent.innerHTML = `
-    <div class="section-header">
-      <h2>重点人员一人一档</h2>
-      <div class="divider"></div>
-    </div>
-
-    <div class="person-grid">
-      <div class="person-card">
-        <div class="pc-header">
-          <div class="pc-avatar risk-high">李</div>
-          <div class="pc-info">
-            <div class="pc-name">李** <span class="tag tag-red">高风险</span></div>
-            <div class="pc-type">严重精神障碍 · 卫健+公安+民政</div>
-          </div>
-        </div>
-        <div class="pc-body">
-          <ul class="pc-timeline">
-            <li><span class="tl-date">2026-07-01</span>公安接警：家庭纠纷报警</li>
-            <li><span class="tl-date">2026-06-25</span>定期随访：情绪稳定，遵医嘱服药</li>
-            <li><span class="tl-date">2026-06-10</span>网格员走访：与邻居发生口角</li>
-          </ul>
-        </div>
-        <div class="pc-footer">
-          <span>下次随访：2026-07-14</span>
-          <span class="urgent">⚠ 13天后</span>
-        </div>
-      </div>
-
-      <div class="person-card">
-        <div class="pc-header">
-          <div class="pc-avatar risk-mid">王</div>
-          <div class="pc-info">
-            <div class="pc-name">王** <span class="tag" style="background:#FFF8F0;color:#E67E22;">中风险</span></div>
-            <div class="pc-type">刑满释放 · 公安+司法</div>
-          </div>
-        </div>
-        <div class="pc-body">
-          <ul class="pc-timeline">
-            <li><span class="tl-date">2026-06-28</span>司法所报到：正常</li>
-            <li><span class="tl-date">2026-06-20</span>定期随访：已就业，生活稳定</li>
-            <li><span class="tl-date">2026-06-05</span>网格员走访：无异常</li>
-          </ul>
-        </div>
-        <div class="pc-footer">
-          <span>下次随访：2026-07-05</span>
-          <span class="urgent">⚠ 仅剩3天！</span>
-        </div>
-      </div>
-
-      <div class="person-card">
-        <div class="pc-header">
-          <div class="pc-avatar risk-low">赵</div>
-          <div class="pc-info">
-            <div class="pc-name">赵** <span class="tag tag-blue">低风险</span></div>
-            <div class="pc-type">社区矫正 · 司法+公安</div>
-          </div>
-        </div>
-        <div class="pc-body">
-          <ul class="pc-timeline">
-            <li><span class="tl-date">2026-06-30</span>定期随访：表现良好</li>
-            <li><span class="tl-date">2026-06-15</span>参加社区公益劳动</li>
-            <li><span class="tl-date">2026-06-01</span>月度评估：无违规行为</li>
-          </ul>
-        </div>
-        <div class="pc-footer">
-          <span>下次随访：2026-07-28</span>
-          <span>正常</span>
-        </div>
-      </div>
-    </div>
-  `;
+function confirmDedup() {
+  showStep(3);
+  runAlertAnimation();
 }
 
-// ===== DEMO TAB =====
-function renderDemo() {
-  mainContent.innerHTML = `
-    <div class="section-header">
-      <h2>交互式演示</h2>
-      <div class="divider"></div>
-      <p style="color:var(--gray-400);margin-top:8px;">模拟一条矛盾纠纷从录入到预警的完整流程</p>
-    </div>
-
-    <div class="demo-container" id="demoContainer">
-      <!-- Step 1: Entry -->
-      <div class="demo-step active-step" id="demoStep1">
-        <div class="demo-step-header">
-          <div class="demo-step-num">1</div>
-          <div class="demo-step-title">录入矛盾纠纷</div>
-        </div>
-        <div class="demo-form">
-          <select id="demoSource">
-            <option value="">选择数据来源</option>
-            <option>12345热线</option>
-            <option>公安接警</option>
-            <option>信访平台</option>
-            <option>网格员上报</option>
-          </select>
-          <input type="text" id="demoName" placeholder="当事人姓名">
-          <input type="tel" id="demoPhone" placeholder="联系电话">
-          <select id="demoType">
-            <option value="">事件类型</option>
-            <option>邻里纠纷</option>
-            <option>家庭暴力</option>
-            <option>征地拆迁</option>
-            <option>物业矛盾</option>
-            <option>劳动争议</option>
-          </select>
-          <input type="text" id="demoAddr" placeholder="事发地址" class="full-width">
-          <textarea id="demoDesc" placeholder="事项简要描述..." rows="2" class="full-width" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:var(--font-body);font-size:14px;"></textarea>
-          <button class="btn btn-primary full-width" onclick="runDemoStep1()">提交录入</button>
-        </div>
-        <div class="demo-result" id="demoResult1"></div>
-      </div>
-
-      <!-- Step 2: Dedup -->
-      <div class="demo-step" id="demoStep2">
-        <div class="demo-step-header">
-          <div class="demo-step-num">2</div>
-          <div class="demo-step-title">智能去重检测</div>
-        </div>
-        <p style="color:var(--gray-400);font-size:14px;">系统自动检测与存量数据的重复情况...</p>
-        <button class="btn btn-gold" onclick="runDemoStep2()" style="margin-top:12px;">开始检测</button>
-        <div class="demo-result" id="demoResult2"></div>
-      </div>
-
-      <!-- Step 3: Alert -->
-      <div class="demo-step" id="demoStep3">
-        <div class="demo-step-header">
-          <div class="demo-step-num">3</div>
-          <div class="demo-step-title">风险预警触发</div>
-        </div>
-        <p style="color:var(--gray-400);font-size:14px;">跨渠道关联分析，判定风险等级...</p>
-        <button class="btn btn-gold" onclick="runDemoStep3()" style="margin-top:12px;">执行研判</button>
-        <div class="demo-result" id="demoResult3"></div>
-      </div>
-
-      <button class="btn btn-outline" onclick="resetDemo()" style="margin-top:16px;">重置演示</button>
-    </div>
-  `;
+function rejectDedup() {
+  alert('已判定为新事件，独立录入。实际场景中该操作需填写判定理由。\n\n（演示继续走预警流程）');
+  showStep(3);
+  runAlertAnimation();
 }
 
-// ===== DEMO LOGIC =====
-function runDemoStep1() {
-  const name = document.getElementById('demoName').value || '张**';
-  const phone = document.getElementById('demoPhone').value || '138****6789';
-  const addr = document.getElementById('demoAddr').value || '菜园镇XX路12号';
-  const type = document.getElementById('demoType').value || '邻里纠纷';
-  const source = document.getElementById('demoSource').value || '12345热线';
+// ===== STEP 3: ALERT ANIMATION =====
+function runAlertAnimation() {
+  const loading = document.getElementById('alertLoading');
+  const content = document.getElementById('alertContent');
 
-  const r = document.getElementById('demoResult1');
-  r.innerHTML = '<strong>✅ 录入成功</strong><br>来源：' + source + ' · 类型：' + type + '<br>当事人：' + name + ' · ' + phone + ' · ' + addr + '<br><span style="color:var(--gray-400);font-size:12px;">系统已自动提取关键字段，准备进入去重检测...</span>';
-  r.className = 'demo-result show';
+  const messages = [
+    '检索关联渠道：12345热线... ✓',
+    '检索关联渠道：公安接警系统... ✓ 发现匹配',
+    '检索关联渠道：信访平台... ✓ 发现匹配',
+    '检索关联渠道：网格员上报... ✓ 发现匹配',
+    '渠道关联数：4 → 触发红色预警规则！'
+  ];
 
-  document.getElementById('demoStep1').classList.remove('active-step');
-  document.getElementById('demoStep1').classList.add('completed');
-  document.getElementById('demoStep2').classList.add('active-step');
+  let i = 0;
+  const interval = setInterval(() => {
+    if (i < messages.length) {
+      loading.innerHTML = '🔍 ' + messages[i];
+      i++;
+    } else {
+      clearInterval(interval);
+      loading.parentElement.style.display = 'none';
+      // Actually, loading is inside step3 which is shown, let me just hide the loading div
+      loading.style.display = 'none';
+      content.style.display = 'block';
+    }
+  }, 500);
 }
 
-function runDemoStep2() {
-  const r = document.getElementById('demoResult2');
-  r.innerHTML = `
-    <strong>🔍 去重检测完成</strong><br>
-    <table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;">
-      <tr><td style="padding:4px 8px;">电话匹配</td><td style="padding:4px 8px;font-family:var(--font-mono);">138****6789 ≈ 138****6789</td><td style="padding:4px 8px;color:var(--gold);font-weight:700;">✓ 40分</td></tr>
-      <tr><td style="padding:4px 8px;">地址匹配</td><td style="padding:4px 8px;font-family:var(--font-mono);">菜园镇XX路12号 ≈ 菜园镇XX路12号</td><td style="padding:4px 8px;color:var(--gold);font-weight:700;">✓ 30分</td></tr>
-      <tr><td style="padding:4px 8px;">语义相似度</td><td style="padding:4px 8px;font-family:var(--font-mono);">DeepSeek判定高度相似</td><td style="padding:4px 8px;color:var(--gold);font-weight:700;">✓ 18分</td></tr>
-      <tr><td style="padding:4px 8px;">姓名匹配</td><td style="padding:4px 8px;font-family:var(--font-mono);">张** = 张**</td><td style="padding:4px 8px;color:var(--gold);font-weight:700;">✓ 10分</td></tr>
-      <tr style="border-top:2px solid var(--gray-200);"><td colspan="2" style="padding:8px;font-weight:700;">综合评分</td><td style="padding:8px;color:var(--red);font-weight:800;font-size:18px;font-family:var(--font-mono);">98分</td></tr>
-    </table>
-    <p style="margin-top:10px;padding:8px 12px;background:var(--red-pale);border-radius:4px;font-size:13px;">
-      <strong>⚠ 疑似重复事件：</strong>该记录与系统中ID#0001高度重复（98分），已推送人工确认
-    </p>
-  `;
-  r.className = 'demo-result show';
-
-  document.getElementById('demoStep2').classList.remove('active-step');
-  document.getElementById('demoStep2').classList.add('completed');
-  document.getElementById('demoStep3').classList.add('active-step');
+function goToStep4() {
+  showStep(4);
 }
 
-function runDemoStep3() {
-  const r = document.getElementById('demoResult3');
-  r.innerHTML = `
-    <strong>🔴 红色预警触发</strong>
-    <p style="margin-top:8px;">同一当事人（张**·138****6789）在以下渠道出现：</p>
-    <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap;">
-      <span class="tag tag-red">12345热线</span>
-      <span class="tag tag-red">公安接警</span>
-      <span class="tag tag-red">信访平台</span>
-      <span class="tag tag-red">网格员上报</span>
-    </div>
-    <p style="font-size:13px;color:var(--gray-600);">跨 <strong>4 个渠道</strong>关联 · 触发红色预警规则<br>
-    系统已自动推送至综治中心负责人 · 预计 2 分钟内钉钉通知送达</p>
-    <p style="margin-top:8px;font-size:12px;color:var(--gray-400);">
-      ✅ 完整事件链路：<br>
-      数据录入 → 字段提取 → 模糊匹配 → 语义分析 → 综合评分(98分) → 疑似重复确认 → 跨渠道关联 → 红色预警触发 → 推送责任人
-    </p>
-  `;
-  r.className = 'demo-result show alert-result';
-
-  document.getElementById('demoStep3').classList.remove('active-step');
-  document.getElementById('demoStep3').classList.add('completed');
+// ===== STEP 4: COMPLETE =====
+function completeStep4() {
+  const result = document.getElementById('step4Result');
+  result.classList.add('show');
+  result.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-function resetDemo() {
-  document.querySelectorAll('.demo-step').forEach(el => {
-    el.classList.remove('active-step', 'completed');
-  });
-  document.getElementById('demoStep1').classList.add('active-step');
-  document.querySelectorAll('.demo-result').forEach(el => {
-    el.className = 'demo-result';
-    el.innerHTML = '';
-  });
+// ===== RESET =====
+function resetAll() {
+  showStep(1);
+  document.getElementById('dedupContent').style.display = 'none';
+  const dedupProg = document.getElementById('dedupProgress');
+  dedupProg.parentElement.style.display = 'block';
+  dedupProg.innerHTML = '正在比对字段...';
+  document.getElementById('alertLoading').style.display = 'block';
+  document.getElementById('alertContent').style.display = 'none';
+  document.getElementById('step4Result').classList.remove('show');
 }
-
-// ===== INIT =====
-renderOverview();
 </script>
 
 </body>
