@@ -56,15 +56,24 @@ const COLUMN_MAP = {
 };
 
 function handleFile(e) {
+  console.log('handleFile called', e.type);
   const file = e.target.files[0];
-  if (!file) return;
+  if (!file) { console.log('no file'); return; }
+  console.log('file:', file.name, file.size);
   const reader = new FileReader();
   reader.onload = function(ev) {
-    const wb = XLSX.read(ev.target.result, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    if (raw.length === 0) { alert('未读取到数据'); return; }
-    processImport(raw);
+    try {
+      console.log('reading file...');
+      const wb = XLSX.read(ev.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      console.log('parsed rows:', raw.length);
+      if (raw.length === 0) { alert('未读取到数据'); return; }
+      processImport(raw);
+    } catch(err) {
+      console.error('parse error:', err);
+      alert('文件解析失败：' + err.message);
+    }
   };
   reader.readAsArrayBuffer(file);
 }
