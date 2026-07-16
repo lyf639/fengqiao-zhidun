@@ -251,6 +251,20 @@ def delete_person(pid: int):
         session.close()
 
 
+def get_person(pid: int):
+    """获取单个人员档案"""
+    session = get_session()
+    try:
+        p = session.query(PersonProfile).get(pid)
+        if not p: return None
+        return {'id': p.id, 'name': p.name, 'person_type': p.person_type,
+                'risk_level': p.risk_level, 'departments': p.departments,
+                'district': p.district, 'phone': p.phone, 'remark': p.remark,
+                'status': p.status}
+    finally:
+        session.close()
+
+
 # ==================== 随访记录 ====================
 
 def list_followups(person_id=None, page=1, page_size=20):

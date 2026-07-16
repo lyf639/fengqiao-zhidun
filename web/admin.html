@@ -306,9 +306,8 @@ async function showPersonForm(data=null) {
 }
 
 async function editPerson(id) {
-  const r = await fetchAuth(`${API}/api/admin/persons?page=1`);
-  const data = await r.json();
-  const p = data.rows.find(x => x.id == id);
+  const r = await fetchAuth(`${API}/api/admin/persons/${id}`);
+  const p = await r.json();
   if (p) showPersonForm(p);
 }
 

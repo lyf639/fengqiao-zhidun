@@ -223,7 +223,7 @@ def _mock_similarity(a: dict, b: dict, backend='mock') -> dict:
     a_type = a.get('dispute_type', '')
     b_type = b.get('dispute_type', '')
     a_district = a.get('district', '')
-    b_district = a.get('district', '')
+    b_district = b.get('district', '')
 
     # 类型一致 +10
     if a_type and a_type == b_type:

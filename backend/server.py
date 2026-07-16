@@ -56,7 +56,7 @@ from auth import login as auth_login, verify_token, seed_default_user
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
-    list_dedup_records, list_alerts, list_persons, create_person, update_person, delete_person,
+    list_dedup_records, list_alerts, list_persons, create_person, update_person, delete_person, get_person,
     list_followups, create_followup, list_audit_logs,
 )
 
@@ -416,9 +416,19 @@ def run_alert(req: AlertRequest):
                 level, rule = 1, 'difficulty_level'
 
             if level > 0:
+                # 跨渠道关联计数：查询同当事人涉及的不同来源渠道数
+                channel_count = 1
+                if c.parties:
+                    names = [n.strip() for n in c.parties.split(',') if n.strip()]
+                    if names:
+                        src_count = session.query(func.count(func.distinct(Case.case_source))).filter(
+                            Case.id != cid,
+                            func.replace(Case.parties, ' ', '').like(f'%{names[0]}%')
+                        ).scalar() or 0
+                        channel_count = max(1, src_count + 1)
                 session.add(AlertEvent(
                     case_id=cid, alert_level=level, rule_type=rule,
-                    channel_count=1, channels=c.case_source or '',
+                    channel_count=channel_count, channels=c.case_source or '',
                     keywords=c.dispute_type or '',
                 ))
                 c.alert_level = level
@@ -528,6 +538,13 @@ def admin_create_person(request: Request, data: dict):
 def admin_update_person(request: Request, person_id: int, data: dict):
     verify_token(request)
     r = update_person(person_id, data)
+    if not r: raise HTTPException(404, 'not found')
+    return r
+
+@app.get('/api/admin/persons/{person_id}', tags=['管理后台'])
+def admin_get_person(request: Request, person_id: int):
+    verify_token(request)
+    r = get_person(person_id)
     if not r: raise HTTPException(404, 'not found')
     return r
 
