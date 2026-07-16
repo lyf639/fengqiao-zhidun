@@ -1,0 +1,8 @@
+fastapi==0.139.1
+uvicorn==0.37.0
+sqlalchemy==2.0.51
+pymysql==1.1.1
+mysql-connector-python==9.7.0
+fakeredis==2.36.2
+redis==5.2.1
+xlrd==2.0.2

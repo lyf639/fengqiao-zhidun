@@ -2,7 +2,7 @@
 枫桥智盾 · FastAPI 后端服务
 uvicorn server:app --host 0.0.0.0 --port 5000 --reload
 """
-import json, uuid, sys
+import json, uuid, sys, os
 from datetime import datetime
 from typing import Optional
 from urllib.parse import quote_plus
@@ -10,6 +10,8 @@ from urllib.parse import quote_plus
 import fakeredis
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -366,6 +368,20 @@ def run_alert(req: AlertRequest):
         raise HTTPException(500, str(e))
     finally:
         session.close()
+
+
+# ==================== Static Frontend ====================
+WEB_DIR = os.path.join(os.path.dirname(__file__), '..', 'web')
+if os.path.isdir(WEB_DIR):
+    app.mount('/static', StaticFiles(directory=WEB_DIR), name='static')
+
+@app.get('/')
+def serve_index():
+    """托管前端驾驶舱页面"""
+    index_path = os.path.join(WEB_DIR, 'index.html')
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {'message': '枫桥智盾 API 已启动', 'docs': '/docs'}
 
 
 # ==================== Entry ====================
