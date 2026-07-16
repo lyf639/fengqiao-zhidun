@@ -29,10 +29,6 @@ function showStep(n) {
   setProgress(n);
 }
 
-// ===== API =====
-// 自动适配：直接访问(localhost:5000)用空路径，跨域访问(localhost:3000)用完整URL
-const API_BASE = window.location.port === '5000' ? '' : 'http://localhost:5000';
-
 // ===== 第一步：Excel 导入 =====
 // 拖拽/点击上传 → SheetJS解析 → 字段映射 → 表格预览
 let importedData = [];
