@@ -230,4 +230,3 @@ function resetAll() {
   document.getElementById('alertContent').innerHTML = '<div class="result-box danger show" style="margin-top:0;margin-bottom:20px;"><div class="result-box-header">🔴 红色预警 — 0 件高风险事件需立即处置</div><div class="result-box-body" style="font-size:13px;color:var(--gray-600);">系统正在扫描中...</div></div>';
   document.getElementById('step4Result').classList.remove('show');
 }
-</script>
