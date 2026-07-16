@@ -165,3 +165,18 @@ async function generateReport() {
 function closeReport() {
   document.getElementById('reportModal').classList.remove('show');
 }
+
+// ===== 进入/退出 Demo 流程 =====
+function enterDemo() {
+  document.getElementById('cockpit').classList.add('hidden');
+  document.getElementById('demoFlow').classList.add('active');
+  showStep(1);
+  window.scrollTo(0, 0);
+}
+
+function backToCockpit() {
+  document.getElementById('demoFlow').classList.remove('active');
+  document.getElementById('cockpit').classList.remove('hidden');
+  resetAll();
+  window.scrollTo(0, 0);
+}
