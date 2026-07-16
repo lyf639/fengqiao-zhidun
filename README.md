@@ -21,6 +21,20 @@ docker-compose up -d                          # MySQL + API + 前端
 | Swagger | http://localhost:5000/docs | 交互式 API 文档，支持在线调试 |
 | ReDoc | http://localhost:5000/redoc | 备用 API 文档 |
 
+### 数据库初始化
+
+确保 MySQL 8.4 服务已启动，创建数据库并导入（项目附带的数据库导出文件 `sql/fengqiao_zhidun_export.sql` 包含 11 张表结构与 42 条演示数据）：
+
+```bash
+# 1. 创建数据库
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS fengqiao_zhidun DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 2. 导入结构和数据
+mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
+```
+
+导入后默认管理员账号 **admin / admin** 即可登录后台管理系统。
+
 ## 🧠 核心能力
 
 ### Excel 一键导入
