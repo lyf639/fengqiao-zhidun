@@ -14,6 +14,7 @@ docker-compose up -d                          # 一键容器化部署
 | 入口 | 地址 |
 |------|------|
 | 驾驶舱 | http://localhost:5000 |
+| 后台管理 | http://localhost:5000/admin |
 | Swagger API 文档 | http://localhost:5000/docs |
 | ReDoc | http://localhost:5000/redoc |
 
@@ -28,6 +29,7 @@ docker-compose up -d                          # 一键容器化部署
 | 一人一档 | 重点人员全周期档案 + 随访时间轴 + 到期自动提醒 | 漏报率从 10% 降至 2% |
 | 多维标签 | 多对多标签体系覆盖风险/人群/区域/时效 | 支撑多维度统计分析 |
 | 闭环处置 | 事件跟踪时间轴 + 自动归档 | 全链路可追溯、可审计 |
+| 后台管理 | 全表 CRUD + 搜索分页 + 审计日志查看 | 10 张数据表一站式可视化管理 |
 
 ## 🏗 技术架构
 
@@ -57,6 +59,7 @@ docker-compose up -d                          # 一键容器化部署
 - **自动 API 文档**：FastAPI 原生 OpenAPI/Swagger，Pydantic 模型自动生成请求验证与交互式文档，支持在线调试
 - **容器化部署**：Docker Compose 双容器编排（MySQL + API），健康检查保证启动顺序，初始化 SQL 自动挂载
 - **全流程可追溯**：原子化高频 Git 提交 + 操作审计日志表，满足算法可审计、内容可溯源的合规要求
+- **内置后台管理**：集成管理界面（/admin），支持案件/人员/预警/去重/审计五模块的搜索、分页、增删改查，无需额外工具即可管理全量数据
 
 ## 🌐 部署架构
 
@@ -104,11 +107,13 @@ docker-compose up -d                          # 一键容器化部署
 
 ```
 ├── web/index.html             驾驶舱 + 四步闭环 Demo
+├── web/admin.html             后台管理系统（CRUD 全表）
 ├── backend/
-│   ├── server.py              FastAPI 主服务（8 个 RESTful 端点）
+│   ├── server.py              FastAPI 主服务（24+ RESTful 端点）
 │   ├── models.py              ORM 模型层（10 表 · 完整关系映射）
 │   ├── ai_service.py          AI 语义服务（4 后端 · 统一接口）
-│   └── report_generator.py    AI 分析报告引擎（月/季/年）
+│   ├── report_generator.py    AI 分析报告引擎（月/季/年）
+│   └── admin_api.py           后台管理 CRUD 逻辑层
 ├── sql/init.sql               数据库初始化（10 表 · 外键 · 索引）
 ├── Dockerfile                 Python 3.12-slim 镜像
 ├── docker-compose.yml         MySQL 8.4 + API 双容器编排
