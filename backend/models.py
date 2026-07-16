@@ -1,0 +1,218 @@
+"""
+枫桥智盾 · SQLAlchemy ORM 模型
+"""
+from datetime import datetime
+from sqlalchemy import (
+    Column, BigInteger, Integer, String, Text, DateTime, Date,
+    Float, JSON, ForeignKey, UniqueConstraint, Index, create_engine,
+)
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, Mapped, mapped_column
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+# ============================================================
+# 1. 矛盾纠纷案件
+# ============================================================
+class Case(Base):
+    __tablename__ = 'cases'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    case_code        = mapped_column(String(50), nullable=False, unique=True, comment='案件编码')
+    agreement_type   = mapped_column(String(20), default='', comment='协议类型')
+    case_source      = mapped_column(String(60), default='', comment='案件来源')
+    mediation_org    = mapped_column(String(120), default='', comment='调解组织')
+    studio           = mapped_column(String(120), default='', comment='工作室')
+    handler          = mapped_column(String(50), default='', comment='受理人姓名')
+    accept_time      = mapped_column(DateTime, nullable=True, comment='受理时间')
+    description      = mapped_column(Text, default='', comment='纠纷简要情况')
+    difficulty       = mapped_column(String(20), default='', comment='案件难度级别')
+    dispute_type     = mapped_column(String(30), default='', index=True, comment='纠纷类别')
+    case_attr        = mapped_column(String(30), default='', comment='案件属性')
+    special_group    = mapped_column(String(30), default='', comment='涉及特殊群体')
+    district         = mapped_column(String(50), default='', index=True, comment='乡镇/街道')
+    has_death        = mapped_column(String(4), default='', comment='有无死亡')
+    mediation_result = mapped_column(String(20), default='', comment='调解结果')
+    mediation_time   = mapped_column(DateTime, nullable=True, comment='调解时间')
+    parties          = mapped_column(String(500), default='', comment='当事人')
+    amount           = mapped_column(Float, default=0.0, comment='涉及金额')
+
+    # 系统扩展字段
+    import_batch     = mapped_column(String(32), default='', comment='导入批次号')
+    import_time      = mapped_column(DateTime, default=datetime.now, comment='导入时间')
+    dedup_status     = mapped_column(Integer, default=0, index=True, comment='去重状态 0未检测 1唯一 2疑似 3确认重复')
+    alert_level      = mapped_column(Integer, default=0, index=True, comment='预警等级 0无 1黄 2橙 3红')
+    status           = mapped_column(Integer, default=0, comment='处置状态 0待处置 1处置中 2已化解 3已归档')
+    created_at       = mapped_column(DateTime, default=datetime.now)
+    updated_at       = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # 关联
+    dedup_matches    = relationship('DedupRecord', foreign_keys='DedupRecord.case_id',
+                                     back_populates='case', lazy='dynamic', cascade='all, delete-orphan')
+    alert_events     = relationship('AlertEvent', back_populates='case',
+                                     lazy='dynamic', cascade='all, delete-orphan')
+
+    __table_args__ = (
+        Index('idx_accept_time', 'accept_time'),
+        Index('idx_status', 'status'),
+    )
+
+
+# ============================================================
+# 2. 去重比对记录
+# ============================================================
+class DedupRecord(Base):
+    __tablename__ = 'dedup_records'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    case_id          = mapped_column(BigInteger, ForeignKey('cases.id', ondelete='CASCADE'), nullable=False, index=True)
+    matched_case_id  = mapped_column(BigInteger, ForeignKey('cases.id', ondelete='CASCADE'), nullable=False, index=True)
+    score_phone      = mapped_column(Integer, default=0, comment='电话匹配得分 满分40')
+    score_address    = mapped_column(Integer, default=0, comment='地址匹配得分 满分30')
+    score_semantic   = mapped_column(Integer, default=0, comment='语义相似度得分 满分20')
+    score_name       = mapped_column(Integer, default=0, comment='姓名匹配得分 满分10')
+    total_score      = mapped_column(Integer, default=0, index=True, comment='综合评分')
+    is_confirmed     = mapped_column(Integer, default=0, comment='0未确认 1确认重复 2判定独立')
+    confirmed_by     = mapped_column(String(50), default='')
+    confirmed_at     = mapped_column(DateTime, nullable=True)
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+    # 双向关联
+    case             = relationship('Case', foreign_keys=[case_id], back_populates='dedup_matches')
+    matched_case     = relationship('Case', foreign_keys=[matched_case_id])
+
+
+# ============================================================
+# 3. 预警事件
+# ============================================================
+class AlertEvent(Base):
+    __tablename__ = 'alert_events'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    case_id          = mapped_column(BigInteger, ForeignKey('cases.id', ondelete='CASCADE'), nullable=False, index=True)
+    alert_level      = mapped_column(Integer, nullable=False, index=True, comment='1黄 2橙 3红')
+    rule_type        = mapped_column(String(50), default='', comment='触发规则类型')
+    channel_count    = mapped_column(Integer, default=0, comment='跨渠道数量')
+    channels         = mapped_column(String(200), default='')
+    keywords         = mapped_column(String(300), default='')
+    is_pushed        = mapped_column(Integer, default=0, index=True, comment='0未推送 1已推送')
+    pushed_at        = mapped_column(DateTime, nullable=True)
+    push_channel     = mapped_column(String(30), default='dingtalk')
+    handler_dept     = mapped_column(String(120), default='')
+    handler_person   = mapped_column(String(50), default='')
+    resolve_deadline = mapped_column(Date, nullable=True)
+    resolved_at      = mapped_column(DateTime, nullable=True)
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+    case             = relationship('Case', back_populates='alert_events')
+
+
+# ============================================================
+# 4. 重点人员档案
+# ============================================================
+class PersonProfile(Base):
+    __tablename__ = 'person_profiles'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name             = mapped_column(String(50), nullable=False, index=True)
+    id_card          = mapped_column(String(200), default='', comment='身份证号 加密存储')
+    person_type      = mapped_column(String(50), nullable=False, index=True, comment='精神障碍/刑满释放/社区矫正等')
+    risk_level       = mapped_column(Integer, default=1, index=True, comment='1低 2中 3高')
+    departments      = mapped_column(String(200), default='')
+    district         = mapped_column(String(50), default='', index=True)
+    phone            = mapped_column(String(20), default='')
+    remark           = mapped_column(Text, default='')
+    status           = mapped_column(Integer, default=1, comment='1在管 2已解管')
+    created_at       = mapped_column(DateTime, default=datetime.now)
+    updated_at       = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    follow_ups       = relationship('FollowUpRecord', back_populates='person',
+                                     lazy='dynamic', cascade='all, delete-orphan')
+
+
+# ============================================================
+# 5. 随访记录
+# ============================================================
+class FollowUpRecord(Base):
+    __tablename__ = 'follow_up_records'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    person_id        = mapped_column(BigInteger, ForeignKey('person_profiles.id', ondelete='CASCADE'),
+                                      nullable=False, index=True)
+    follow_date      = mapped_column(Date, nullable=False)
+    content          = mapped_column(Text, default='')
+    next_date        = mapped_column(Date, nullable=True, index=True)
+    is_reminded      = mapped_column(Integer, default=0, index=True)
+    recorder         = mapped_column(String(50), default='')
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+    person           = relationship('PersonProfile', back_populates='follow_ups')
+
+
+# ============================================================
+# 6. 政策法规库
+# ============================================================
+class Policy(Base):
+    __tablename__ = 'policy_library'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    policy_name      = mapped_column(String(200), nullable=False)
+    dept             = mapped_column(String(60), default='', index=True)
+    category         = mapped_column(String(50), default='', index=True)
+    target_group     = mapped_column(String(200), default='')
+    conditions       = mapped_column(Text, default='')
+    benefit_standard = mapped_column(String(300), default='')
+    procedure_desc   = mapped_column(Text, default='')
+    keywords         = mapped_column(String(300), default='')
+    is_active        = mapped_column(Integer, default=1, index=True)
+    created_at       = mapped_column(DateTime, default=datetime.now)
+    updated_at       = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
+# ============================================================
+# 7. 操作审计日志
+# ============================================================
+class AuditLog(Base):
+    __tablename__ = 'audit_logs'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    target_type      = mapped_column(String(30), nullable=False, index=True)
+    target_id        = mapped_column(BigInteger, default=0)
+    action           = mapped_column(String(30), nullable=False, index=True)
+    operator         = mapped_column(String(50), default='')
+    detail           = mapped_column(JSON, nullable=True)
+    ip_address       = mapped_column(String(45), default='')
+    created_at       = mapped_column(DateTime, default=datetime.now, index=True)
+
+    __table_args__ = (
+        Index('idx_target', 'target_type', 'target_id'),
+    )
+
+
+# ============================================================
+# 数据库连接工厂
+# ============================================================
+from urllib.parse import quote_plus
+DATABASE_URL = f'mysql+pymysql://root:{quote_plus("FengQiao@2026")}@localhost:3306/fengqiao_zhidun?charset=utf8mb4'
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=3600,
+    echo=False,
+)
+
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+def get_session():
+    """获取数据库会话"""
+    return SessionLocal()
+
+
+def init_db():
+    """建表（仅首次运行，表已存在则跳过）"""
+    Base.metadata.create_all(engine)

@@ -1,24 +1,25 @@
 """
 枫桥智盾 · 后端API服务
-端口 5000 · MySQL + Redis(fakeredis)
+端口 5000 · SQLAlchemy ORM + MySQL + Redis(fakeredis)
 """
-import json, sys, os, uuid
+import json, sys, uuid
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from datetime import datetime
 
-import mysql.connector
 import fakeredis
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 
-DB_CONFIG = {
-    'host': 'localhost', 'user': 'root', 'password': 'FengQiao@2026',
-    'database': 'fengqiao_zhidun', 'charset': 'utf8mb4', 'autocommit': True,
-}
+from models import (
+    Case, DedupRecord, AlertEvent, PersonProfile, FollowUpRecord,
+    Policy, AuditLog, get_session, init_db,
+)
 
-# Redis (fakeredis - 完全兼容 redis-py API，生产环境换成 redis.Redis() 即可)
+# Redis (fakeredis - 生产换成 redis.Redis)
 r = fakeredis.FakeRedis(decode_responses=True)
 
-# 初始化 dashboard 缓存
+# 初始化缓存
 def init_cache():
     if not r.exists('dashboard:total'):
         r.hset('dashboard:total', mapping={'value': 0, 'label': '累计案件数'})
@@ -29,7 +30,6 @@ def init_cache():
 
 init_cache()
 
-# 前端字段名 → cases 表字段名 映射
 FIELD_MAP = {
     'caseCode': 'case_code', 'agreementType': 'agreement_type',
     'caseSource': 'case_source', 'mediationOrg': 'mediation_org',
@@ -41,10 +41,6 @@ FIELD_MAP = {
     'result': 'mediation_result', 'mediationTime': 'mediation_time',
     'parties': 'parties', 'amount': 'amount',
 }
-
-
-def get_conn():
-    return mysql.connector.connect(**DB_CONFIG)
 
 
 def parse_datetime(val):
@@ -62,10 +58,16 @@ def parse_amount(val):
 
 
 def push_feed(msg, feed_type='info'):
-    """推送实时动态到 Redis List"""
     item = json.dumps({'msg': msg, 'type': feed_type, 'time': datetime.now().strftime('%H:%M:%S')})
     r.lpush('feed:list', item)
-    r.ltrim('feed:list', 0, 49)  # 保留最近50条
+    r.ltrim('feed:list', 0, 49)
+
+
+def log_audit(session, target_type, target_id, action, detail, operator='system'):
+    session.add(AuditLog(
+        target_type=target_type, target_id=target_id,
+        action=action, operator=operator, detail=detail,
+    ))
 
 
 class APIHandler(BaseHTTPRequestHandler):
@@ -85,34 +87,58 @@ class APIHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path).path
-        if path == '/api/import': self.handle_import()
-        elif path == '/api/dedup': self.handle_dedup()
-        elif path == '/api/alert': self.handle_alert()
-        else: self._send_json({'error': 'not found'}, 404)
+        if path == '/api/import': return self.handle_import()
+        if path == '/api/dedup': return self.handle_dedup()
+        if path == '/api/alert': return self.handle_alert()
+        self._send_json({'error': 'not found'}, 404)
 
     def do_GET(self):
         path = urlparse(self.path).path
-        if path == '/api/stats': self.handle_stats()
-        elif path == '/api/cases': self.handle_list_cases()
-        elif path == '/api/dashboard': self.handle_dashboard()
-        elif path == '/api/feed': self.handle_feed()
-        else: self._send_json({'error': 'not found'}, 404)
+        if path == '/api/stats': return self.handle_stats()
+        if path == '/api/cases': return self.handle_list_cases()
+        if path == '/api/dashboard': return self.handle_dashboard()
+        if path == '/api/feed': return self.handle_feed()
+        self._send_json({'error': 'not found'}, 404)
 
-    # ==================== DASHBOARD ====================
+    # ---- Dashboard ----
     def handle_dashboard(self):
-        data = {
+        self._send_json({
             'total': int(r.hget('dashboard:total', 'value') or 0),
             'dedup': int(r.hget('dashboard:dedup', 'value') or 0),
             'alerts': int(r.hget('dashboard:alerts', 'value') or 0),
             'resolved': int(r.hget('dashboard:resolved', 'value') or 0),
-        }
-        self._send_json(data)
+        })
 
     def handle_feed(self):
         items = r.lrange('feed:list', 0, 19)
         self._send_json([json.loads(i) for i in items])
 
-    # ==================== IMPORT ====================
+    # ---- Stats ----
+    def handle_stats(self):
+        session = get_session()
+        try:
+            total = session.query(func.count(Case.id)).scalar()
+            duplicates = session.query(func.count(Case.id)).filter(Case.dedup_status >= 2).scalar()
+            alerts = session.query(func.count(Case.id)).filter(Case.alert_level > 0).scalar()
+            self._send_json({'total': total, 'duplicates': duplicates, 'alerts': alerts})
+        finally:
+            session.close()
+
+    def handle_list_cases(self):
+        session = get_session()
+        try:
+            cases = session.query(Case).order_by(Case.id.desc()).limit(50).all()
+            self._send_json({'cases': [{
+                'id': c.id, 'case_code': c.case_code, 'dispute_type': c.dispute_type,
+                'district': c.district, 'parties': c.parties,
+                'accept_time': str(c.accept_time) if c.accept_time else None,
+                'amount': c.amount, 'dedup_status': c.dedup_status,
+                'alert_level': c.alert_level, 'status': c.status,
+            } for c in cases]})
+        finally:
+            session.close()
+
+    # ---- Import ----
     def handle_import(self):
         try:
             length = int(self.headers.get('Content-Length', 0))
@@ -122,190 +148,182 @@ class APIHandler(BaseHTTPRequestHandler):
                 self._send_json({'error': 'no records'}, 400); return
 
             batch_id = datetime.now().strftime('%Y%m%d%H%M%S') + '_' + uuid.uuid4().hex[:8]
-            conn = get_conn(); cursor = conn.cursor()
-            inserted = 0; skipped = 0
+            session = get_session()
+            inserted, skipped = 0, 0
 
-            insert_sql = """
-                INSERT INTO cases (case_code, agreement_type, case_source, mediation_org,
-                  studio, handler, accept_time, description, difficulty, dispute_type,
-                  case_attr, special_group, district, has_death, mediation_result,
-                  mediation_time, parties, amount, import_batch, import_time, dedup_status)
-                VALUES (%(case_code)s, %(agreement_type)s, %(case_source)s, %(mediation_org)s,
-                  %(studio)s, %(handler)s, %(accept_time)s, %(description)s, %(difficulty)s,
-                  %(dispute_type)s, %(case_attr)s, %(special_group)s, %(district)s,
-                  %(has_death)s, %(mediation_result)s, %(mediation_time)s, %(parties)s,
-                  %(amount)s, %(import_batch)s, NOW(), 0)
-            """
+            try:
+                for rec in records:
+                    mapped = {}
+                    for js_key, db_col in FIELD_MAP.items():
+                        mapped[db_col] = rec.get(js_key, '')
 
-            for rec in records:
-                mapped = {}
-                for js_key, db_col in FIELD_MAP.items():
-                    mapped[db_col] = rec.get(js_key, '')
-                mapped['case_code'] = mapped.get('case_code', '') or f'AUTO_{uuid.uuid4().hex[:12].upper()}'
-                mapped['accept_time'] = parse_datetime(mapped.get('accept_time'))
-                mapped['mediation_time'] = parse_datetime(mapped.get('mediation_time'))
-                mapped['amount'] = parse_amount(mapped.get('amount'))
-                mapped['import_batch'] = batch_id
-                try:
-                    cursor.execute(insert_sql, mapped); inserted += 1
-                except mysql.connector.IntegrityError:
-                    skipped += 1
+                    case = Case(
+                        case_code=mapped.get('case_code') or f'AUTO_{uuid.uuid4().hex[:12].upper()}',
+                        agreement_type=mapped.get('agreement_type', ''),
+                        case_source=mapped.get('case_source', ''),
+                        mediation_org=mapped.get('mediation_org', ''),
+                        studio=mapped.get('studio', ''),
+                        handler=mapped.get('handler', ''),
+                        accept_time=parse_datetime(mapped.get('accept_time')),
+                        description=mapped.get('description', ''),
+                        difficulty=mapped.get('difficulty', ''),
+                        dispute_type=mapped.get('dispute_type', ''),
+                        case_attr=mapped.get('case_attr', ''),
+                        special_group=mapped.get('special_group', ''),
+                        district=mapped.get('district', ''),
+                        has_death=mapped.get('has_death', ''),
+                        mediation_result=mapped.get('mediation_result', ''),
+                        mediation_time=parse_datetime(mapped.get('mediation_time')),
+                        parties=mapped.get('parties', ''),
+                        amount=parse_amount(mapped.get('amount')),
+                        import_batch=batch_id,
+                        import_time=datetime.now(),
+                    )
+                    session.add(case)
+                    try:
+                        session.flush()
+                        inserted += 1
+                    except IntegrityError:
+                        session.rollback()
+                        skipped += 1
 
-            # 更新 Redis dashboard 计数
-            r.hincrby('dashboard:total', 'value', inserted)
-            push_feed(f'📥 Excel一键导入 {inserted} 条案件' + (f'，{skipped} 条跳过' if skipped else ''), 'info')
+                session.commit()
+                r.hincrby('dashboard:total', 'value', inserted)
+                push_feed(f'📥 Excel一键导入 {inserted} 条案件' + (f'，{skipped} 条跳过' if skipped else ''))
+                log_audit(session, 'case', 0, 'import',
+                          {'batch': batch_id, 'inserted': inserted, 'skipped': skipped})
 
-            cursor.execute("""
-                INSERT INTO audit_logs (target_type, target_id, action, operator, detail)
-                VALUES ('case', 0, 'import', 'system', %s)
-            """, (json.dumps({'batch': batch_id, 'inserted': inserted, 'skipped': skipped}),))
-
-            conn.close()
-            self._send_json({'success': True, 'batch': batch_id, 'inserted': inserted, 'skipped': skipped})
+                self._send_json({'success': True, 'batch': batch_id, 'inserted': inserted, 'skipped': skipped})
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
         except Exception as e:
             self._send_json({'error': str(e)}, 500)
 
-    # ==================== DEDUP ====================
+    # ---- Dedup ----
     def handle_dedup(self):
         try:
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
-            batch_id = body.get('batch', ''); case_ids = body.get('case_ids', [])
+            batch_id = body.get('batch', '')
+            case_ids = body.get('case_ids', [])
             if not batch_id or not case_ids:
                 self._send_json({'error': 'batch and case_ids required'}, 400); return
 
-            conn = get_conn(); cursor = conn.cursor(dictionary=True)
-            dup_results = []; total_dup = 0
+            session = get_session()
+            dup_results, total_dup = [], 0
 
-            for cid in case_ids:
-                # 先查 Redis 缓存
-                cache_key = f'dedup:case:{cid}'
-                cached = r.get(cache_key)
-                if cached:
-                    cached_data = json.loads(cached)
-                    dup_results.append(cached_data)
-                    if cached_data.get('match_count', 0) > 0: total_dup += 1
-                    cursor.execute("UPDATE cases SET dedup_status = %s WHERE id = %s",
-                                   (3 if cached_data.get('match_count', 0) > 0 else 1, cid))
-                    continue
+            try:
+                for cid in case_ids:
+                    # Redis 缓存检查
+                    cache_key = f'dedup:case:{cid}'
+                    cached = r.get(cache_key)
+                    if cached:
+                        cached_data = json.loads(cached)
+                        dup_results.append(cached_data)
+                        if cached_data.get('match_count', 0) > 0: total_dup += 1
+                        new_status = 3 if cached_data.get('match_count', 0) > 0 else 1
+                        session.query(Case).filter(Case.id == cid).update({'dedup_status': new_status})
+                        continue
 
-                cursor.execute("SELECT * FROM cases WHERE id = %s", (cid,))
-                new_case = cursor.fetchone()
-                if not new_case: continue
+                    new_case = session.query(Case).get(cid)
+                    if not new_case: continue
 
-                cursor.execute("""
-                    SELECT id FROM cases WHERE id != %s AND dedup_status != 3
-                      AND district = %s AND dispute_type = %s
-                      AND parties IS NOT NULL AND parties != '' LIMIT 5
-                """, (cid, new_case['district'], new_case['dispute_type']))
-                matches = cursor.fetchall()
+                    matches = session.query(Case).filter(
+                        Case.id != cid,
+                        Case.dedup_status != 3,
+                        Case.district == new_case.district,
+                        Case.dispute_type == new_case.dispute_type,
+                        Case.parties.isnot(None),
+                        Case.parties != '',
+                    ).limit(5).all()
 
-                if matches:
-                    scores = {'phone': 35, 'address': 28, 'semantic': 18, 'name': 8}
-                    total = sum(scores.values())
-                    for m in matches:
-                        cursor.execute("""
-                            INSERT INTO dedup_records (case_id, matched_case_id,
-                              score_phone, score_address, score_semantic, score_name, total_score)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        """, (cid, m['id'], scores['phone'], scores['address'],
-                              scores['semantic'], scores['name'], total))
-                    cursor.execute("UPDATE cases SET dedup_status = 2 WHERE id = %s", (cid,))
-                    result = {'case_id': cid, 'match_count': len(matches), 'total_score': total}
-                    dup_results.append(result); total_dup += 1
-                    # 写入 Redis 缓存 (过期1小时)
-                    r.setex(cache_key, 3600, json.dumps(result))
-                else:
-                    cursor.execute("UPDATE cases SET dedup_status = 1 WHERE id = %s", (cid,))
-                    r.setex(cache_key, 3600, json.dumps({'case_id': cid, 'match_count': 0, 'total_score': 0}))
+                    if matches:
+                        scores = {'phone': 35, 'address': 28, 'semantic': 18, 'name': 8}
+                        total = sum(scores.values())
+                        for m in matches:
+                            session.add(DedupRecord(
+                                case_id=cid, matched_case_id=m.id,
+                                score_phone=scores['phone'], score_address=scores['address'],
+                                score_semantic=scores['semantic'], score_name=scores['name'],
+                                total_score=total,
+                            ))
+                        session.query(Case).filter(Case.id == cid).update({'dedup_status': 2})
+                        result = {'case_id': cid, 'match_count': len(matches), 'total_score': total}
+                        dup_results.append(result); total_dup += 1
+                        r.setex(cache_key, 3600, json.dumps(result))
+                    else:
+                        session.query(Case).filter(Case.id == cid).update({'dedup_status': 1})
+                        r.setex(cache_key, 3600, json.dumps({'case_id': cid, 'match_count': 0, 'total_score': 0}))
 
-            r.hincrby('dashboard:dedup', 'value', total_dup)
-            push_feed(f'🔍 智能去重完成：检查 {len(case_ids)} 条，发现 {total_dup} 条疑似重复', 'warning')
-            cursor.execute("""
-                INSERT INTO audit_logs (target_type, target_id, action, operator, detail)
-                VALUES ('case', 0, 'dedup', 'system', %s)
-            """, (json.dumps({'batch': batch_id, 'checked': len(case_ids), 'duplicates': total_dup}),))
-            conn.close()
-            self._send_json({'success': True, 'checked': len(case_ids), 'duplicates': total_dup, 'results': dup_results})
+                session.commit()
+                r.hincrby('dashboard:dedup', 'value', total_dup)
+                push_feed(f'🔍 智能去重完成：检查 {len(case_ids)} 条，发现 {total_dup} 条疑似重复', 'warning')
+                log_audit(session, 'case', 0, 'dedup',
+                          {'batch': batch_id, 'checked': len(case_ids), 'duplicates': total_dup})
+
+                self._send_json({'success': True, 'checked': len(case_ids), 'duplicates': total_dup, 'results': dup_results})
+            except Exception:
+                session.rollback(); raise
+            finally:
+                session.close()
         except Exception as e:
             self._send_json({'error': str(e)}, 500)
 
-    # ==================== ALERT ====================
+    # ---- Alert ----
     def handle_alert(self):
         try:
             length = int(self.headers.get('Content-Length', 0))
             body = json.loads(self.rfile.read(length))
             case_ids = body.get('case_ids', [])
-            if not case_ids: self._send_json({'error': 'case_ids required'}, 400); return
+            if not case_ids:
+                self._send_json({'error': 'case_ids required'}, 400); return
 
-            conn = get_conn(); cursor = conn.cursor(dictionary=True)
-            alerts = []; red_count = 0; orange_count = 0
+            session = get_session()
+            alerts, red_count, orange_count = [], 0, 0
 
-            for cid in case_ids:
-                cursor.execute("SELECT * FROM cases WHERE id = %s", (cid,))
-                c = cursor.fetchone()
-                if not c: continue
+            try:
+                for cid in case_ids:
+                    c = session.query(Case).get(cid)
+                    if not c: continue
 
-                level = 0; rule = ''
-                if c['amount'] and c['amount'] >= 100000:
-                    level = 3; rule = 'high_amount'
-                elif c['has_death'] and c['has_death'] in ('是', '有', '1'):
-                    level = 3; rule = 'has_death'
-                elif c['amount'] and c['amount'] >= 10000:
-                    level = 2; rule = 'medium_amount'
-                elif c['difficulty'] and c['difficulty'] not in ('', '简单纠纷'):
-                    level = 1; rule = 'difficulty_level'
+                    level, rule = 0, ''
+                    if c.amount and c.amount >= 100000:
+                        level, rule = 3, 'high_amount'
+                    elif c.has_death and c.has_death in ('是', '有', '1'):
+                        level, rule = 3, 'has_death'
+                    elif c.amount and c.amount >= 10000:
+                        level, rule = 2, 'medium_amount'
+                    elif c.difficulty and c.difficulty not in ('', '简单纠纷'):
+                        level, rule = 1, 'difficulty_level'
 
-                if level > 0:
-                    cursor.execute("""
-                        INSERT INTO alert_events (case_id, alert_level, rule_type, channel_count, channels, keywords)
-                        VALUES (%s, %s, %s, 1, %s, %s)
-                    """, (cid, level, rule, c['case_source'] or '', c['dispute_type'] or ''))
-                    cursor.execute("UPDATE cases SET alert_level = %s WHERE id = %s", (level, cid))
-                    alerts.append({'case_id': cid, 'level': level, 'rule': rule})
-                    if level == 3: red_count += 1
-                    elif level == 2: orange_count += 1
+                    if level > 0:
+                        session.add(AlertEvent(
+                            case_id=cid, alert_level=level, rule_type=rule,
+                            channel_count=1, channels=c.case_source or '',
+                            keywords=c.dispute_type or '',
+                        ))
+                        c.alert_level = level
+                        alerts.append({'case_id': cid, 'level': level, 'rule': rule})
+                        if level == 3: red_count += 1
+                        elif level == 2: orange_count += 1
 
-            r.hincrby('dashboard:alerts', 'value', len(alerts))
-            if red_count > 0:
-                push_feed(f'🔴 红色预警触发 {red_count} 件：涉及金额≥10万元', 'danger')
-            if orange_count > 0:
-                push_feed(f'🟠 橙色预警触发 {orange_count} 件：涉及金额≥1万元', 'warning')
-            cursor.execute("""
-                INSERT INTO audit_logs (target_type, target_id, action, operator, detail)
-                VALUES ('alert', 0, 'alert_scan', 'system', %s)
-            """, (json.dumps({'checked': len(case_ids), 'alerts': len(alerts)}),))
-            conn.close()
-            self._send_json({'success': True, 'alerts': len(alerts), 'red': red_count, 'orange': orange_count})
-        except Exception as e:
-            self._send_json({'error': str(e)}, 500)
+                session.commit()
+                r.hincrby('dashboard:alerts', 'value', len(alerts))
+                if red_count:
+                    push_feed(f'🔴 红色预警触发 {red_count} 件：涉及金额≥10万元', 'danger')
+                if orange_count:
+                    push_feed(f'🟠 橙色预警触发 {orange_count} 件：涉及金额≥1万元', 'warning')
+                log_audit(session, 'alert', 0, 'alert_scan',
+                          {'checked': len(case_ids), 'alerts': len(alerts)})
 
-    # ==================== STATS ====================
-    def handle_stats(self):
-        try:
-            conn = get_conn(); cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT COUNT(*) AS total FROM cases"); total = cursor.fetchone()['total']
-            cursor.execute("SELECT COUNT(*) AS cnt FROM cases WHERE dedup_status >= 2"); duplicates = cursor.fetchone()['cnt']
-            cursor.execute("SELECT COUNT(*) AS cnt FROM cases WHERE alert_level > 0"); alerts = cursor.fetchone()['cnt']
-            conn.close()
-            self._send_json({'total': total, 'duplicates': duplicates, 'alerts': alerts})
-        except Exception as e:
-            self._send_json({'error': str(e)}, 500)
-
-    def handle_list_cases(self):
-        try:
-            conn = get_conn(); cursor = conn.cursor(dictionary=True)
-            cursor.execute("""
-                SELECT id, case_code, dispute_type, district, parties, accept_time,
-                       amount, dedup_status, alert_level, status
-                FROM cases ORDER BY id DESC LIMIT 50
-            """)
-            rows = cursor.fetchall()
-            for r in rows:
-                r['accept_time'] = str(r['accept_time']) if r['accept_time'] else None
-                r['amount'] = float(r['amount']) if r['amount'] else 0
-            conn.close()
-            self._send_json({'cases': rows})
+                self._send_json({'success': True, 'alerts': len(alerts), 'red': red_count, 'orange': orange_count})
+            except Exception:
+                session.rollback(); raise
+            finally:
+                session.close()
         except Exception as e:
             self._send_json({'error': str(e)}, 500)
 
@@ -314,9 +332,11 @@ class APIHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
+    init_db()
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
     server = HTTPServer(('0.0.0.0', port), APIHandler)
-    print(f'枫桥智盾 API 已启动: http://localhost:{port}  [MySQL + Redis(fakeredis)]')
+    print(f'枫桥智盾 API 已启动: http://localhost:{port}')
+    print(f'ORM: SQLAlchemy 2.0  |  DB: MySQL  |  Cache: Redis(fakeredis)')
     print(f'端点: POST /api/import /api/dedup /api/alert  GET /api/dashboard /api/feed /api/stats')
     try:
         server.serve_forever()
