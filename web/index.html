@@ -8,6 +8,8 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
 </script>
+<script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js">
+</script>
 <style>
 :root {
   --navy-950: #060F1E; --navy-900: #0A1F3F; --navy-800: #0F2B54; --navy-700: #1B3A6B; --navy-600: #2A5290;
@@ -179,6 +181,51 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--gray-8
 .alert-mini-row.orange { background: var(--orange-pale); color: var(--orange); }
 .alert-mini-row.gold { background: var(--gold-pale); color: var(--gold); }
 .alert-mini-row .am-count { font-family: var(--font-mono); font-size: 24px; font-weight: 800; }
+
+/* ---- Report Section ---- */
+.report-section { max-width: 1100px; margin: 0 auto; padding: 0 48px 60px; }
+.report-card {
+  background: linear-gradient(135deg, var(--navy-900) 0%, var(--navy-700) 100%);
+  border-radius: var(--radius-lg); padding: 32px 36px; color: #fff;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+}
+.report-card .rc-left { display: flex; align-items: center; gap: 16px; }
+.report-card .rc-icon { font-size: 40px; }
+.report-card .rc-title { font-size: 18px; font-weight: 800; letter-spacing: 2px; }
+.report-card .rc-desc { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 4px; }
+.report-card .rc-controls { display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+.report-card select { padding: 10px 14px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #fff; font-size: 14px; font-family: var(--font-body); }
+.report-card select option { color: var(--gray-800); background: #fff; }
+
+/* ---- Report Modal ---- */
+.report-modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
+  align-items: center; justify-content: center;
+}
+.report-modal-overlay.show { display: flex; }
+.report-modal {
+  background: var(--white); border-radius: var(--radius-lg); max-width: 800px; width: 90%; max-height: 85vh;
+  overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.report-modal-header {
+  padding: 24px 30px; border-bottom: 1px solid var(--gray-200);
+  display: flex; justify-content: space-between; align-items: center;
+  position: sticky; top: 0; background: var(--white); z-index: 1; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.report-modal-header h2 { font-family: var(--font-display); font-size: 20px; color: var(--navy-900); }
+.report-modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray-400); padding: 4px; line-height: 1; }
+.report-modal-close:hover { color: var(--gray-800); }
+.report-modal-body { padding: 24px 30px 30px; }
+.report-loading { text-align: center; padding: 40px; font-size: 15px; color: var(--gray-400); }
+.report-loading .spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid var(--gray-200); border-top-color: var(--navy-600); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.report-content h3 { font-size: 16px; color: var(--navy-900); margin: 20px 0 8px; }
+.report-content h3:first-child { margin-top: 0; }
+.report-content p { font-size: 14px; color: var(--gray-600); line-height: 1.9; margin-bottom: 8px; }
+.report-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.report-stat { text-align: center; padding: 16px 10px; background: var(--gray-100); border-radius: var(--radius-lg); }
+.report-stat .rs-val { font-family: var(--font-mono); font-size: 24px; font-weight: 800; color: var(--navy-900); }
+.report-stat .rs-lbl { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
 
 /* ================================================================
    DEMO FLOW (hidden by default)
@@ -435,6 +482,41 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--gray-8
       </div>
     </div>
   </div>
+
+  <div class="report-section">
+    <div class="report-card">
+      <div class="rc-left">
+        <div class="rc-icon">📊</div>
+        <div>
+          <div class="rc-title">AI 智能分析报告</div>
+          <div class="rc-desc">基于 DeepSeek 大模型，自动统计案件数据并生成专业分析报告</div>
+        </div>
+      </div>
+      <div class="rc-controls">
+        <select id="reportPeriod" onchange="onReportPeriodChange()">
+          <option value="monthly">月度报告</option>
+          <option value="quarterly">季度报告</option>
+          <option value="yearly">年度报告</option>
+        </select>
+        <select id="reportYear"></select>
+        <select id="reportSub" style="display:none;"></select>
+        <button class="btn btn-gold" onclick="generateReport()">🤖 生成报告</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Modal -->
+  <div class="report-modal-overlay" id="reportModal">
+    <div class="report-modal">
+      <div class="report-modal-header">
+        <h2 id="reportModalTitle">分析报告</h2>
+        <button class="report-modal-close" onclick="closeReport()">✕</button>
+      </div>
+      <div class="report-modal-body" id="reportModalBody">
+        <div class="report-loading"><span class="spinner"></span>AI 正在分析数据...</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ================================================================
@@ -661,10 +743,71 @@ async function fetchDashboard() {
 window.addEventListener('DOMContentLoaded', () => {
   fetchDashboard().then(() => animateCounters());
   fetchFeed();
+  initReportSelects();
   setTimeout(drawMiniChart, 400);
   setInterval(fetchDashboard, 5000);
   setInterval(fetchFeed, 5000);
 });
+
+// ===== REPORT GENERATION =====
+function initReportSelects() {
+  const y = document.getElementById('reportYear');
+  const now = new Date().getFullYear();
+  for (let i = now; i >= 2020; i--) { y.innerHTML += `<option value="${i}">${i}年</option>`; }
+  onReportPeriodChange();
+}
+
+function onReportPeriodChange() {
+  const p = document.getElementById('reportPeriod').value;
+  const sub = document.getElementById('reportSub');
+  sub.innerHTML = '';
+  if (p === 'monthly') {
+    sub.style.display = '';
+    for (let i = 1; i <= 12; i++) sub.innerHTML += `<option value="${i}">${i}月</option>`;
+  } else if (p === 'quarterly') {
+    sub.style.display = '';
+    for (let i = 1; i <= 4; i++) sub.innerHTML += `<option value="${i}">第${i}季度</option>`;
+  } else {
+    sub.style.display = 'none';
+  }
+}
+
+async function generateReport() {
+  document.getElementById('reportModal').classList.add('show');
+  document.getElementById('reportModalBody').innerHTML = '<div class="report-loading"><span class="spinner"></span>AI 正在分析数据，生成报告...</div>';
+  const period = document.getElementById('reportPeriod').value;
+  const year = parseInt(document.getElementById('reportYear').value);
+  const subEl = document.getElementById('reportSub');
+  const body = { period, year };
+  if (period === 'monthly') body.month = parseInt(subEl.value);
+  if (period === 'quarterly') body.quarter = parseInt(subEl.value);
+
+  try {
+    const resp = await fetch(API_BASE + '/api/report/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.success) {
+      document.getElementById('reportModalTitle').textContent = data.title;
+      const s = data.stats;
+      document.getElementById('reportModalBody').innerHTML = `
+        <div class="report-stats">
+          <div class="report-stat"><div class="rs-val">${s.total}</div><div class="rs-lbl">事件总数</div></div>
+          <div class="report-stat"><div class="rs-val" style="color:var(--green);">${s.resolve_rate}%</div><div class="rs-lbl">化解率</div></div>
+          <div class="report-stat"><div class="rs-val" style="color:var(--red);">${s.alert_red}</div><div class="rs-lbl">红色预警</div></div>
+          <div class="report-stat"><div class="rs-val">¥${(s.total_amount/10000).toFixed(1)}万</div><div class="rs-lbl">涉及金额</div></div>
+        </div>
+        <div class="report-content">${marked.parse(data.analysis || '')}</div>
+      `;
+    }
+  } catch(e) {
+    document.getElementById('reportModalBody').innerHTML = '<p style="color:var(--red);text-align:center;">生成失败：请确认后端服务已启动</p>';
+  }
+}
+
+function closeReport() {
+  document.getElementById('reportModal').classList.remove('show');
+}
 
 // ===== ENTER / EXIT DEMO =====
 function enterDemo() {

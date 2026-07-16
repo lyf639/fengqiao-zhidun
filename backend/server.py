@@ -26,6 +26,7 @@ from models import (
     get_session, init_db,
 )
 from ai_service import semantic_similarity
+from report_generator import generate_report
 
 # ==================== App ====================
 app = FastAPI(
@@ -392,6 +393,29 @@ def run_alert(req: AlertRequest):
         raise HTTPException(500, str(e))
     finally:
         session.close()
+
+
+# ==================== Report ====================
+
+class ReportRequest(BaseModel):
+    period: str = Field(..., description="monthly | quarterly | yearly")
+    year: int = Field(..., ge=2020, le=2030)
+    month: int | None = Field(None, ge=1, le=12)
+    quarter: int | None = Field(None, ge=1, le=4)
+
+
+@app.post('/api/report/generate', tags=['智能报告'])
+def generate_ai_report(req: ReportRequest):
+    """
+    AI 分析报告生成
+
+    根据选定时间段（月度/季度/年度），自动统计案件数据并调用 DeepSeek 生成专业分析报告，
+    包含总体态势、重点分析、工作建议三部分。
+    """
+    result = generate_report(req.period, req.year, req.month, req.quarter)
+    if 'error' in result:
+        raise HTTPException(400, result['error'])
+    return result
 
 
 # ==================== Static Frontend ====================
