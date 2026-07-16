@@ -572,18 +572,17 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--gray-8
       <div id="dedupLoading" style="padding:20px;background:var(--gray-100);border-radius:var(--radius-lg);font-size:14px;color:var(--gray-600);">🔍 正在与存量数据交叉比对...</div>
       <div id="dedupContent" style="display:none;">
         <div class="import-stats" style="margin-bottom:20px;">
-          <div class="import-stat"><div class="is-val" id="dedupTotal">27</div><div class="is-lbl">导入案件数</div></div>
-          <div class="import-stat warn"><div class="is-val" style="color:var(--orange);" id="dedupSuspect">5</div><div class="is-lbl">疑似重复</div></div>
-          <div class="import-stat success"><div class="is-val" style="color:var(--green);" id="dedupUnique">22</div><div class="is-lbl">独立新案件</div></div>
+          <div class="import-stat"><div class="is-val" id="dedupTotal">0</div><div class="is-lbl">导入案件数</div></div>
+          <div class="import-stat warn"><div class="is-val" style="color:var(--orange);" id="dedupSuspect">0</div><div class="is-lbl">疑似重复</div></div>
+          <div class="import-stat success"><div class="is-val" style="color:var(--green);" id="dedupUnique">0</div><div class="is-lbl">独立新案件</div></div>
         </div>
-        <div class="result-box warning show" style="margin-top:0;margin-bottom:20px;">
-          <div class="result-box-header">⚠ 发现 5 条疑似重复记录</div>
-          <div class="result-box-body">
-            <div class="match-item"><div class="match-status dup">疑似重复 #1</div><div class="match-detail"><strong>蒋飞箭 vs 商盼盼</strong> · 邻里纠纷 · 菜园镇<br><span style="color:var(--gray-400);">电话 38/40 · 地址 28/30 · 语义 18/20 · 姓名 8/10</span></div><span class="tag tag-orange">92分</span></div>
-            <div class="match-item"><div class="match-status dup">疑似重复 #2</div><div class="match-detail"><strong>鲁忠伟 vs 许梅仙</strong> · 邻里纠纷 · 菜园镇<br><span style="color:var(--gray-400);">电话 28/40 · 地址 24/30 · 语义 15/20</span></div><span class="tag tag-gold">78分</span></div>
-            <div class="match-item"><div class="match-status dup">疑似重复 #3</div><div class="match-detail"><strong>林阿菊 vs 周国强</strong> · 婚姻家庭纠纷 · 菜园镇<br><span style="color:var(--gray-400);">电话 35/40 · 语义 16/20</span></div><span class="tag tag-gold">82分</span></div>
+        <div id="dedupResultBox" style="display:none;">
+          <div class="result-box warning show" style="margin-top:0;margin-bottom:20px;">
+            <div class="result-box-header">⚠ 发现 <span id="dedupHeaderCount">0</span> 条疑似重复记录</div>
+            <div class="result-box-body" id="dedupResultList"></div>
           </div>
         </div>
+        <div id="dedupResultEmpty" style="display:none;padding:24px;text-align:center;color:var(--green);font-size:15px;font-weight:700;">✅ 未发现重复记录，所有案件均为独立事件</div>
         <div style="font-size:15px;font-weight:700;color:var(--navy-900);margin-bottom:14px;">📊 去重对比</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead><tr style="background:var(--navy-900);color:#fff;"><th style="padding:8px 14px;text-align:left;">指标</th><th style="padding:8px 14px;text-align:left;">人工处理</th><th style="padding:8px 14px;text-align:left;">枫桥智盾</th><th style="padding:8px 14px;text-align:left;">提升</th></tr></thead>
@@ -908,67 +907,103 @@ async function goToStep2() {
   const dedupLoading = document.getElementById('dedupLoading');
   dedupLoading.innerHTML = '⏳ 正在将数据写入数据库...';
 
+  // 1. 导入
   try {
     const resp = await fetch(API_BASE + '/api/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ records: importedData })
     });
     const result = await resp.json();
     if (result.success) {
       importBatch = result.batch;
-      dedupLoading.innerHTML = `✅ 写入成功：${result.inserted} 条入库` + (result.skipped > 0 ? `，${result.skipped} 条跳过（重复编号）` : '');
+      dedupLoading.innerHTML = `✅ 写入成功：${result.inserted} 条入库，正在执行去重比对...`;
     } else {
-      dedupLoading.innerHTML = '❌ 写入失败：' + (result.error || '未知错误');
-      return;
+      dedupLoading.innerHTML = '❌ 写入失败：' + (result.error || '未知错误'); return;
     }
   } catch (e) {
-    dedupLoading.innerHTML = '❌ 无法连接后端服务，请确认 server.py 已启动（端口5000）';
-    return;
+    dedupLoading.innerHTML = '❌ 无法连接后端服务'; return;
   }
 
-  // 获取刚导入的案件ID
+  // 2. 获取导入的案件ID
   try {
     const resp2 = await fetch(API_BASE + '/api/cases');
     const data2 = await resp2.json();
     importedCaseIds = (data2.cases || []).slice(0, importedData.length).map(c => c.id);
   } catch(e) { importedCaseIds = []; }
 
-  document.getElementById('dedupTotal').textContent = importedData.length;
-  document.getElementById('dedupSuspect').textContent = Math.min(5, importedData.length);
-  document.getElementById('dedupUnique').textContent = importedData.length - Math.min(5, importedData.length);
+  // 3. 执行去重比对
+  let dedupData = null;
+  try {
+    const dedupResp = await fetch(API_BASE + '/api/dedup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch: importBatch, case_ids: importedCaseIds })
+    });
+    dedupData = await dedupResp.json();
+  } catch(e) {}
+
+  // 4. 渲染去重结果
+  const checked = dedupData ? dedupData.checked : importedData.length;
+  const duplicates = dedupData ? dedupData.duplicates : 0;
+  document.getElementById('dedupTotal').textContent = checked;
+  document.getElementById('dedupSuspect').textContent = duplicates;
+  document.getElementById('dedupUnique').textContent = checked - duplicates;
+
+  if (dedupData && dedupData.results && dedupData.results.length > 0) {
+    document.getElementById('dedupResultBox').style.display = 'block';
+    document.getElementById('dedupResultEmpty').style.display = 'none';
+    document.getElementById('dedupHeaderCount').textContent = duplicates;
+    const list = document.getElementById('dedupResultList');
+    list.innerHTML = dedupData.results.map((r, i) => {
+      const scoreClass = r.total_score >= 85 ? 'tag-orange' : 'tag-gold';
+      const aiTag = r.ai_backend === 'deepseek' ? '🤖 DeepSeek' : (r.ai_backend === 'ollama' ? '🦙 Ollama' : '📐 规则');
+      return `<div class="match-item"><div class="match-status dup">疑似重复 #${i+1}</div><div class="match-detail"><strong>案件 #${r.case_id}</strong> 匹配到 ${r.match_count} 条相似记录<br><span style="color:var(--gray-400);">${aiTag} 判定 · ${r.ai_reason || ''}</span></div><span class="tag ${scoreClass}">${r.total_score}分</span></div>`;
+    }).join('');
+  } else {
+    document.getElementById('dedupResultBox').style.display = 'none';
+    document.getElementById('dedupResultEmpty').style.display = 'block';
+  }
+
   dedupLoading.style.display = 'none';
   document.getElementById('dedupContent').style.display = 'block';
 }
 
 async function confirmDedup() {
   showStep(3);
-  const ld = document.getElementById('alertLoading');
-  ld.innerHTML = '⏳ 正在执行去重比对...';
-
-  try {
-    await fetch(API_BASE + '/api/dedup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ batch: importBatch, case_ids: importedCaseIds })
-    });
-  } catch(e) {}
-
   runAlertAnim();
 }
 
 async function runAlertAnim() {
   const ld = document.getElementById('alertLoading'), ct = document.getElementById('alertContent');
-  const msgs = ['检索关联渠道：司法行政调解平台... ✓ 6条','检索关联渠道：公安接警系统... ✓ 3条','检索关联渠道：信访平台... ✓ 2条','检索关联渠道：综治信息系统... ✓ 4条','风险评分计算... 红色2件 · 橙色5件'];
-  let i = 0; const t = setInterval(() => { if(i<msgs.length){ld.innerHTML='🔍 '+msgs[i];i++;}else{clearInterval(t);ld.style.display='none';ct.style.display='block';} }, 500);
+  const msgs = ['检索关联渠道：司法行政调解平台... ✓','检索关联渠道：公安接警系统... ✓','检索关联渠道：信访平台... ✓','检索关联渠道：综治信息系统... ✓','风险评分计算中...'];
+  let i = 0; const t = setInterval(() => { if(i<msgs.length){ld.innerHTML='🔍 '+msgs[i];i++;}else{clearInterval(t);ld.style.display='none';ct.style.display='block';} }, 400);
 
+  // 调用后端预警
+  let alertData = null;
   try {
-    await fetch(API_BASE + '/api/alert', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const resp = await fetch(API_BASE + '/api/alert', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ case_ids: importedCaseIds })
     });
+    alertData = await resp.json();
   } catch(e) {}
+
+  // 渲染预警结果
+  if (alertData && alertData.success) {
+    document.getElementById('alertContent').innerHTML = `
+      <div class="result-box danger show" style="margin-top:0;margin-bottom:20px;">
+        <div class="result-box-header">🔴 红色预警 — ${alertData.red || 0} 件高风险事件需立即处置</div>
+        <div class="result-box-body" style="font-size:13px;color:var(--gray-600);">
+          系统自动扫描 ${alertData.alerts || importedCaseIds.length} 条案件，触发红色预警 ${alertData.red || 0} 件、橙色预警 ${alertData.orange || 0} 件。<br>
+          <strong>触发规则：</strong>涉及金额 ≥ 10万元 且 跨2个及以上渠道 → 自动升级红色预警
+        </div>
+      </div>
+      ${(alertData.orange || 0) > 0 ? `<div class="result-box warning show" style="margin-top:0;margin-bottom:20px;">
+        <div class="result-box-header">🟠 橙色预警 — ${alertData.orange} 件需重点关注</div>
+        <div class="result-box-body" style="font-size:13px;color:var(--gray-600);">识别出 ${alertData.orange} 件涉及金额较大且跨渠道的案件，已推送至相关乡镇综治中心。</div>
+      </div>` : ''}
+      <div style="padding:16px 20px;background:var(--gold-pale);border-radius:var(--radius-lg);border-left:3px solid var(--gold);font-size:14px;"><strong>🔔 自动推送：</strong>预警信息已通过钉钉通知相关乡镇综治中心负责人。</div>
+    `;
+  }
 }
 function goToStep4() { showStep(4); }
 function completeStep4() { const r = document.getElementById('step4Result'); r.classList.add('show'); r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -978,8 +1013,12 @@ function resetAll() {
   document.getElementById('btnContinue1').disabled = true;
   document.getElementById('dedupLoading').style.display = 'block';
   document.getElementById('dedupContent').style.display = 'none';
+  document.getElementById('dedupResultBox').style.display = 'none';
+  document.getElementById('dedupResultEmpty').style.display = 'none';
+  document.getElementById('dedupResultList').innerHTML = '';
   document.getElementById('alertLoading').style.display = 'block';
   document.getElementById('alertContent').style.display = 'none';
+  document.getElementById('alertContent').innerHTML = '<div class="result-box danger show" style="margin-top:0;margin-bottom:20px;"><div class="result-box-header">🔴 红色预警 — 0 件高风险事件需立即处置</div><div class="result-box-body" style="font-size:13px;color:var(--gray-600);">系统正在扫描中...</div></div>';
   document.getElementById('step4Result').classList.remove('show');
 }
 </script>
