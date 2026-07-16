@@ -354,23 +354,23 @@ body { font-family: var(--font-body); background: var(--bg); color: var(--gray-8
       <div class="hero-stats">
         <div class="hero-stat">
           <div class="hs-icon">📥</div>
-          <div class="hs-value"><span class="counter" data-target="7">0</span></div>
-          <div class="hs-label">接入数据源</div>
+          <div class="hs-value"><span class="counter" data-key="total" data-target="0">0</span></div>
+          <div class="hs-label">累计案件数</div>
         </div>
         <div class="hero-stat">
           <div class="hs-icon">🔄</div>
-          <div class="hs-value"><span class="counter" data-target="386">0</span></div>
-          <div class="hs-label">本月智能去重（条）</div>
+          <div class="hs-value"><span class="counter" data-key="dedup" data-target="0">0</span></div>
+          <div class="hs-label">智能去重识别</div>
         </div>
         <div class="hero-stat">
           <div class="hs-icon">🔴</div>
-          <div class="hs-value"><span class="counter" data-target="23">0</span></div>
+          <div class="hs-value"><span class="counter" data-key="alerts" data-target="0">0</span></div>
           <div class="hs-label">实时预警事件</div>
         </div>
         <div class="hero-stat">
           <div class="hs-icon">✅</div>
-          <div class="hs-value"><span class="counter" data-target="863">0</span></div>
-          <div class="hs-label">本月化解成功</div>
+          <div class="hs-value"><span class="counter" data-key="resolved" data-target="0">0</span></div>
+          <div class="hs-label">化解成功</div>
         </div>
       </div>
 
@@ -622,33 +622,48 @@ function drawMiniChart() {
   });
 }
 
-// Live feed auto-refresh
-const feedItems = [
-  ['green', '菜园镇 · 邻里纠纷调解成功 · 赔偿1500元', '2分钟前'],
-  ['orange', '枸杞乡 · 损害赔偿纠纷 · 涉及金额¥230,000', '15分钟前'],
-  ['red', '菜园镇 · 跨4渠道关联触发红色预警', '28分钟前'],
-  ['green', '嵊山镇 · 海事渔事纠纷调解成功', '1小时前'],
-  ['orange', '五龙乡 · 随访到期提醒：王**仅剩3天', '2小时前'],
-  ['red', '洋山镇 · 物业矛盾升级 · 3渠道关联', '3小时前'],
-  ['green', '菜园镇 · 消费维权调解成功', '4小时前'],
-];
-let feedIdx = 0;
-function refreshFeed() {
-  const ul = document.getElementById('liveFeed');
-  feedIdx = (feedIdx + 1) % feedItems.length;
-  const item = feedItems[feedIdx];
-  const li = document.createElement('li');
-  li.innerHTML = `<span class="lf-dot ${item[0]}"></span><span class="lf-text">${item[1]}</span><span class="lf-time">刚刚</span>`;
-  li.style.animation = 'fadeSlideIn 0.5s ease';
-  ul.insertBefore(li, ul.firstChild);
-  if (ul.children.length > 7) ul.removeChild(ul.lastChild);
+// Live feed - fetch from Redis-backed API
+let feedLastTs = '';
+async function fetchFeed() {
+  try {
+    const resp = await fetch(API_BASE + '/api/feed');
+    const items = await resp.json();
+    if (!items.length) return;
+    const ul = document.getElementById('liveFeed');
+    const typeMap = { danger: 'red', warning: 'orange', info: 'green' };
+    ul.innerHTML = '';
+    items.forEach(item => {
+      const li = document.createElement('li');
+      const dotClass = typeMap[item.type] || 'green';
+      li.innerHTML = `<span class="lf-dot ${dotClass}"></span><span class="lf-text">${item.msg}</span><span class="lf-time">${item.time}</span>`;
+      li.style.animation = 'fadeSlideIn 0.5s ease';
+      ul.appendChild(li);
+    });
+  } catch(e) {}
+}
+
+// Fetch dashboard stats from API and update counters
+async function fetchDashboard() {
+  try {
+    const resp = await fetch(API_BASE + '/api/dashboard');
+    const data = await resp.json();
+    document.querySelectorAll('.counter').forEach(el => {
+      const key = el.dataset.key;
+      if (data[key] !== undefined) {
+        el.dataset.target = data[key];
+        el.textContent = data[key];
+      }
+    });
+  } catch(e) {}
 }
 
 // Init cockpit
 window.addEventListener('DOMContentLoaded', () => {
-  animateCounters();
+  fetchDashboard().then(() => animateCounters());
+  fetchFeed();
   setTimeout(drawMiniChart, 400);
-  setInterval(refreshFeed, 4000);
+  setInterval(fetchDashboard, 5000);
+  setInterval(fetchFeed, 5000);
 });
 
 // ===== ENTER / EXIT DEMO =====
