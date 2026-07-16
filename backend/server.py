@@ -7,8 +7,9 @@ from datetime import datetime
 from typing import Optional
 from urllib.parse import quote_plus
 
+# ⚠ .env 必须在所有业务模块导入之前加载，override=True 覆盖系统环境变量
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
 import fakeredis
 from fastapi import FastAPI, HTTPException

@@ -1,26 +1,39 @@
 """
 枫桥智盾 · AI 语义服务
-支持：本地 Ollama (deepseek-r1) / 云端 DeepSeek-v4-pro / 模拟回退
-切换方式：环境变量 AI_BACKEND=ollama|deepseek|mock
+支持：本地 ST (sentence-transformers) / Ollama (deepseek-r1) / 云端 DeepSeek-v4-pro / 模拟回退
+切换方式：环境变量 AI_BACKEND=st|ollama|deepseek|mock
 """
 import os, json, requests
 
-AI_BACKEND = os.getenv('AI_BACKEND', 'ollama')       # ollama | deepseek | mock
+AI_BACKEND = os.getenv('AI_BACKEND', 'st')              # st | ollama | deepseek | mock
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'deepseek-r1:1.5b')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')
 DEEPSEEK_BASE_URL = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+ST_MODEL_NAME = os.getenv('ST_MODEL', 'paraphrase-multilingual-MiniLM-L12-v2')
+
+_st_model = None
+
+def _get_st_model():
+    """延迟加载 sentence-transformers 模型"""
+    global _st_model
+    if _st_model is None:
+        from sentence_transformers import SentenceTransformer
+        _st_model = SentenceTransformer(ST_MODEL_NAME)
+    return _st_model
 
 
 def semantic_similarity(case_a: dict, case_b: dict) -> dict:
     """
     计算两条案件描述的语义相似度
-    返回: {'score': 0-20, 'reason': '...', 'backend': 'ollama'|'deepseek'|'mock'}
+    返回: {'score': 0-20, 'reason': '...', 'backend': 'st'|'ollama'|'deepseek'|'mock'}
     """
     if AI_BACKEND == 'deepseek' and DEEPSEEK_API_KEY:
         return _deepseek_similarity(case_a, case_b)
     elif AI_BACKEND == 'ollama':
         return _ollama_similarity(case_a, case_b)
+    elif AI_BACKEND == 'st':
+        return _st_similarity(case_a, case_b)
     else:
         return _mock_similarity(case_a, case_b)
 
@@ -102,6 +115,24 @@ def _deepseek_similarity(a: dict, b: dict) -> dict:
         return _mock_similarity(a, b, 'deepseek_api_error')
     except Exception:
         return _mock_similarity(a, b, 'deepseek_error')
+
+
+def _st_similarity(a: dict, b: dict) -> dict:
+    """本地 Sentence-Transformers 语义相似度"""
+    try:
+        model = _get_st_model()
+        text_a = f"{a.get('dispute_type','')} {a.get('description','')[:300]}"
+        text_b = f"{b.get('dispute_type','')} {b.get('description','')[:300]}"
+        embeddings = model.encode([text_a, text_b], convert_to_tensor=True)
+        from sentence_transformers.util import cos_sim
+        similarity = float(cos_sim(embeddings[0], embeddings[1])[0][0])
+        return {
+            'score': round(similarity * 20, 1),
+            'reason': f'向量余弦相似度 {similarity:.2%}',
+            'backend': 'st',
+        }
+    except Exception as e:
+        return _mock_similarity(a, b, f'st_error:{str(e)[:30]}')
 
 
 def _mock_similarity(a: dict, b: dict, backend='mock') -> dict:
