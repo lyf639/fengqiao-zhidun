@@ -207,6 +207,7 @@ async function runAlertAnim() {
         <div class="result-box-body" style="font-size:13px;color:var(--gray-600);">识别出 ${alertData.orange} 件涉及金额较大且跨渠道的案件，已推送至相关乡镇综治中心。</div>
       </div>` : ''}
       <div style="padding:16px 20px;background:var(--gold-pale);border-radius:var(--radius-lg);border-left:3px solid var(--gold);font-size:14px;"><strong>🔔 自动推送：</strong>预警信息已通过钉钉通知相关乡镇综治中心负责人。</div>
+      <div class="btn-row"><button class="btn btn-danger" onclick="goToStep4()">📋 进入处置跟进</button></div>
     `;
   }
 }
