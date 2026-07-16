@@ -1,6 +1,6 @@
 """
 枫桥智盾 · AI 分析报告生成器
-支持月度/季度/年度报告，统计 + DeepSeek AI 生成叙事分析
+支持月度/季度/年度报告，统计 + AI 叙事分析（云→本→规则三级降级）
 """
 import json, os
 from datetime import datetime, timedelta
@@ -13,10 +13,12 @@ from models import Case, AlertEvent, get_session
 
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')
 DEEPSEEK_BASE_URL = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'deepseek-r1:1.5b')
 
 
 def _call_deepseek(prompt: str) -> str:
-    """调用 DeepSeek 生成分析文本"""
+    """调用云端 DeepSeek-v4-pro"""
     resp = requests.post(
         f'{DEEPSEEK_BASE_URL}/v1/chat/completions',
         headers={'Authorization': f'Bearer {DEEPSEEK_API_KEY}', 'Content-Type': 'application/json'},
@@ -29,7 +31,68 @@ def _call_deepseek(prompt: str) -> str:
     )
     if resp.status_code == 200:
         return resp.json()['choices'][0]['message']['content']
-    return f'[AI调用失败: {resp.status_code}]'
+    raise Exception(f'DeepSeek API error: {resp.status_code}')
+
+
+def _call_ollama(prompt: str) -> str:
+    """调用本地 Ollama 模型"""
+    resp = requests.post(
+        f'{OLLAMA_HOST}/api/generate',
+        json={'model': OLLAMA_MODEL, 'prompt': prompt, 'stream': False,
+              'options': {'temperature': 0.3, 'num_predict': 1500}},
+        timeout=60,
+    )
+    if resp.status_code == 200:
+        return resp.json().get('response', '')
+    raise Exception(f'Ollama error: {resp.status_code}')
+
+
+def _generate_analysis(prompt: str, stats: dict, title: str) -> dict:
+    """三级降级：DeepSeek → Ollama → 规则引擎"""
+    # 第一级：云端 DeepSeek
+    try:
+        if DEEPSEEK_API_KEY:
+            return {'analysis': _call_deepseek(prompt), 'backend': 'deepseek'}
+    except Exception:
+        pass
+
+    # 第二级：本地 Ollama
+    try:
+        return {'analysis': _call_ollama(prompt), 'backend': 'ollama'}
+    except Exception:
+        pass
+
+    # 第三级：规则引擎兜底
+    return {'analysis': _rule_based_analysis(stats, title), 'backend': 'rule'}
+
+
+def _rule_based_analysis(stats: dict, title: str) -> str:
+    """规则引擎生成结构化报告（零依赖）"""
+    t = stats
+    top_types = ', '.join(f"{x['name']}({x['pct']}%)" for x in t['type_distribution'][:3])
+    top_districts = ', '.join(f"{x['name']}({x['count']}件)" for x in t['district_distribution'][:3])
+    top_sources = ', '.join(f"{x['name']}" for x in t['source_distribution'][:3])
+    resolve_comment = '化解成效显著' if t['resolve_rate'] >= 70 else ('化解工作稳步推进' if t['resolve_rate'] >= 50 else '化解压力较大，需加大力度')
+    alert_comment = '需重点关注高风险事件' if t['alert_red'] > 0 else '高风险事件总体可控'
+    top_case_text = ''
+    for c in t['top_cases'][:2]:
+        top_case_text += f"- {c['case_code']}：{c['dispute_type']}，{c['district']}，涉及金额 {c['amount']:,.0f} 元\n"
+
+    return f"""## 一、总体态势
+
+{title}期间，嵊泗县共受理矛盾纠纷 {t['total']} 件，已成功化解 {t['resolved']} 件，化解率 {t['resolve_rate']}%。{resolve_comment}。涉及总金额 {t['total_amount']:,.0f} 元。{alert_comment}，其中红色预警 {t['alert_red']} 件，橙色预警 {t['alert_orange']} 件。
+
+## 二、重点分析
+
+高发纠纷类型集中在：{top_types}。从区域分布看，{top_districts} 为案件高发区域。案件主要来源渠道为 {top_sources}。
+
+高金额案件方面：
+{top_case_text}
+## 三、工作建议
+
+1. 针对 {t['type_distribution'][0]['name'] if t['type_distribution'] else '重点类型'} 类纠纷占比最高的情况，建议开展专项排查和源头治理。
+2. 加强 {t['district_distribution'][0]['name'] if t['district_distribution'] else '重点区域'} 的调解力量配置，提升一线化解能力。
+3. 完善跨部门联动机制，对涉及金额较大的案件实行领导包案、限期化解，防止矛盾升级。"""
 
 
 def generate_report(period: str, year: int, month: int = None, quarter: int = None) -> dict:
@@ -143,7 +206,7 @@ def generate_report(period: str, year: int, month: int = None, quarter: int = No
 
 请直接返回 Markdown 格式，不要额外说明。"""
 
-        ai_analysis = _call_deepseek(ai_prompt)
+        ai_result = _generate_analysis(ai_prompt, stats, title)
 
         return {
             'success': True,
@@ -154,7 +217,8 @@ def generate_report(period: str, year: int, month: int = None, quarter: int = No
             'quarter': quarter,
             'date_range': f'{start.strftime("%Y-%m-%d")} ~ {end.strftime("%Y-%m-%d")}',
             'stats': stats,
-            'analysis': ai_analysis,
+            'analysis': ai_result['analysis'],
+            'ai_backend': ai_result['backend'],
             'generated_at': datetime.now().isoformat(),
         }
     finally:

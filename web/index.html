@@ -796,6 +796,7 @@ async function generateReport() {
           <div class="report-stat"><div class="rs-val" style="color:var(--red);">${s.alert_red}</div><div class="rs-lbl">红色预警</div></div>
           <div class="report-stat"><div class="rs-val">¥${(s.total_amount/10000).toFixed(1)}万</div><div class="rs-lbl">涉及金额</div></div>
         </div>
+        <div style="margin-bottom:16px;font-size:12px;color:var(--gray-400);">🤖 AI 引擎：${data.ai_backend === 'deepseek' ? 'DeepSeek-v4-pro 云端' : data.ai_backend === 'ollama' ? 'Ollama 本地' : '规则引擎'}</div>
         <div class="report-content">${marked.parse(data.analysis || '')}</div>
       `;
     }
