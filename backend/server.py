@@ -7,6 +7,9 @@ from datetime import datetime
 from typing import Optional
 from urllib.parse import quote_plus
 
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+
 import fakeredis
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
