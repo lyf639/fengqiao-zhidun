@@ -192,6 +192,65 @@ class AuditLog(Base):
 
 
 # ============================================================
+# 8. 分类映射表 (category_mappings)
+# 不同上游系统的分类叫法不同 → 统一映射到标准分类
+# ============================================================
+class CategoryMapping(Base):
+    __tablename__ = 'category_mappings'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    source_system    = mapped_column(String(60), nullable=False, index=True, comment='来源系统 如12345热线/公安接警')
+    source_category  = mapped_column(String(60), nullable=False, comment='源系统分类名 如邻里矛盾')
+    target_category  = mapped_column(String(60), nullable=False, index=True, comment='统一标准分类 如邻里纠纷')
+    confidence       = mapped_column(Float, default=1.0, comment='映射置信度 0~1')
+    is_auto          = mapped_column(Integer, default=1, comment='0人工标注 1自动匹配')
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('source_system', 'source_category', name='uq_source_category'),
+    )
+
+
+# ============================================================
+# 9. 案件标签表 (case_tags)
+# 灵活的多维标签体系，比固定 dispute_type 更丰富
+# ============================================================
+class CaseTag(Base):
+    __tablename__ = 'case_tags'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name             = mapped_column(String(30), nullable=False, unique=True, comment='标签名')
+    color            = mapped_column(String(7), default='#2A5290', comment='标签颜色 #HEX')
+    tag_category     = mapped_column(String(30), default='', index=True, comment='标签分类: 风险/类型/人群/区域/时效')
+    description      = mapped_column(String(100), default='')
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+    cases            = relationship('Case', secondary='case_tag_relations', back_populates='tags')
+
+
+# ============================================================
+# 10. 案件-标签关联表 (case_tag_relations)
+# 多对多中间表
+# ============================================================
+class CaseTagRelation(Base):
+    __tablename__ = 'case_tag_relations'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    case_id          = mapped_column(BigInteger, ForeignKey('cases.id', ondelete='CASCADE'), nullable=False, index=True, comment='关联案件')
+    tag_id           = mapped_column(BigInteger, ForeignKey('case_tags.id', ondelete='CASCADE'), nullable=False, index=True, comment='关联标签')
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+    __table_args__ = (
+        UniqueConstraint('case_id', 'tag_id', name='uq_case_tag'),
+        {'mysql_engine': 'InnoDB'},
+    )
+
+
+# 更新 Case 模型 —— 添加 tags 反向关联
+Case.tags = relationship('CaseTag', secondary='case_tag_relations', back_populates='cases')
+
+
+# ============================================================
 # 数据库连接工厂
 # ============================================================
 from urllib.parse import quote_plus
