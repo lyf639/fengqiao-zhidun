@@ -1,4 +1,4 @@
-﻿# 枫桥智盾 · 基层矛盾纠纷智能预警与化解平台
+# 枫桥智盾 · 基层矛盾纠纷智能预警与化解平台
 
 一体化社会治理智能平台，践行新时代"枫桥经验"，以国产大模型与智能体技术赋能基层矛盾纠纷全周期管理。系统支持**云+端双模 AI 架构**——云端调用 DeepSeek-v4-pro 享受顶级推理能力，本地部署 DeepSeek-R1 蒸馏模型确保敏感数据不出域，环境变量一键热切换。覆盖数据汇聚、智能去重、风险预警、处置跟进、分析报告、重点人员管理六大业务闭环。
 
@@ -298,5 +298,5 @@ DB_NAME=fengqiao_zhidun
 
 ---
 
-**作者：** 刘亦凡 · **仓库：** [github.com/lyf639/fengqiao-zhidun](https://github.com/lyf639/fengqiao-zhidun) · **开发工具：** Qoder AI 编程助手
+**作者：** 嵊泗县委政法委刘亦凡 · **仓库：** [github.com/lyf639/fengqiao-zhidun](https://github.com/lyf639/fengqiao-zhidun) · **开发工具：** Qoder AI 编程助手
 
