@@ -685,8 +685,13 @@ function showStep(n) {
   setProgress(n);
 }
 
+// ===== API =====
+const API_BASE = 'http://localhost:5000';
+
 // ===== STEP 1: EXCEL IMPORT =====
 let importedData = [];
+let importBatch = '';
+let importedCaseIds = [];
 const COLUMN_MAP = {
   '案件编码': 'caseCode','案件编号': 'caseCode','协议类型': 'agreementType','案件来源': 'caseSource',
   '调解组织': 'mediationOrg','工作室': 'studio','受理人姓名': 'handler','受理人': 'handler',
@@ -738,17 +743,78 @@ zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
 zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) { document.getElementById('fileInput').files = e.dataTransfer.files; handleFile({ target: { files: [f] } }); } });
 
 // ===== STEP 2 =====
-function goToStep2() { if (importedData.length === 0) { alert('请先导入Excel'); return; } showStep(2); document.getElementById('dedupTotal').textContent = importedData.length; document.getElementById('dedupSuspect').textContent = Math.min(5, importedData.length); document.getElementById('dedupUnique').textContent = importedData.length - Math.min(5, importedData.length); document.getElementById('dedupLoading').style.display = 'none'; document.getElementById('dedupContent').style.display = 'block'; }
-function confirmDedup() { showStep(3); runAlertAnim(); }
-function runAlertAnim() {
+async function goToStep2() {
+  if (importedData.length === 0) { alert('请先导入Excel'); return; }
+  showStep(2);
+  const dedupLoading = document.getElementById('dedupLoading');
+  dedupLoading.innerHTML = '⏳ 正在将数据写入数据库...';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ records: importedData })
+    });
+    const result = await resp.json();
+    if (result.success) {
+      importBatch = result.batch;
+      dedupLoading.innerHTML = `✅ 写入成功：${result.inserted} 条入库` + (result.skipped > 0 ? `，${result.skipped} 条跳过（重复编号）` : '');
+    } else {
+      dedupLoading.innerHTML = '❌ 写入失败：' + (result.error || '未知错误');
+      return;
+    }
+  } catch (e) {
+    dedupLoading.innerHTML = '❌ 无法连接后端服务，请确认 server.py 已启动（端口5000）';
+    return;
+  }
+
+  // 获取刚导入的案件ID
+  try {
+    const resp2 = await fetch(API_BASE + '/api/cases');
+    const data2 = await resp2.json();
+    importedCaseIds = (data2.cases || []).slice(0, importedData.length).map(c => c.id);
+  } catch(e) { importedCaseIds = []; }
+
+  document.getElementById('dedupTotal').textContent = importedData.length;
+  document.getElementById('dedupSuspect').textContent = Math.min(5, importedData.length);
+  document.getElementById('dedupUnique').textContent = importedData.length - Math.min(5, importedData.length);
+  dedupLoading.style.display = 'none';
+  document.getElementById('dedupContent').style.display = 'block';
+}
+
+async function confirmDedup() {
+  showStep(3);
+  const ld = document.getElementById('alertLoading');
+  ld.innerHTML = '⏳ 正在执行去重比对...';
+
+  try {
+    await fetch(API_BASE + '/api/dedup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch: importBatch, case_ids: importedCaseIds })
+    });
+  } catch(e) {}
+
+  runAlertAnim();
+}
+
+async function runAlertAnim() {
   const ld = document.getElementById('alertLoading'), ct = document.getElementById('alertContent');
   const msgs = ['检索关联渠道：司法行政调解平台... ✓ 6条','检索关联渠道：公安接警系统... ✓ 3条','检索关联渠道：信访平台... ✓ 2条','检索关联渠道：综治信息系统... ✓ 4条','风险评分计算... 红色2件 · 橙色5件'];
   let i = 0; const t = setInterval(() => { if(i<msgs.length){ld.innerHTML='🔍 '+msgs[i];i++;}else{clearInterval(t);ld.style.display='none';ct.style.display='block';} }, 500);
+
+  try {
+    await fetch(API_BASE + '/api/alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ case_ids: importedCaseIds })
+    });
+  } catch(e) {}
 }
 function goToStep4() { showStep(4); }
 function completeStep4() { const r = document.getElementById('step4Result'); r.classList.add('show'); r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 function resetAll() {
-  showStep(1); importedData = [];
+  showStep(1); importedData = []; importBatch = ''; importedCaseIds = [];
   document.getElementById('importSummary').classList.remove('show');
   document.getElementById('btnContinue1').disabled = true;
   document.getElementById('dedupLoading').style.display = 'block';
