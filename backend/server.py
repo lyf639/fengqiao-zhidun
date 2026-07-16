@@ -27,6 +27,11 @@ from models import (
 )
 from ai_service import semantic_similarity
 from report_generator import generate_report
+from admin_api import (
+    list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
+    list_dedup_records, list_alerts, list_persons, create_person, update_person, delete_person,
+    list_followups, create_followup, list_audit_logs,
+)
 
 # ==================== App ====================
 app = FastAPI(
@@ -418,6 +423,76 @@ def generate_ai_report(req: ReportRequest):
     return result
 
 
+# ==================== Admin API ====================
+
+@app.get('/api/admin/cases', tags=['管理后台'])
+def admin_cases(page: int = 1, district: str = '', dispute_type: str = '', keyword: str = ''):
+    return admin_list_cases(page, 20, district, dispute_type, keyword)
+
+@app.get('/api/admin/cases/{case_id}', tags=['管理后台'])
+def admin_get_case(case_id: int):
+    r = get_case(case_id)
+    if not r: raise HTTPException(404, 'not found')
+    return r
+
+@app.post('/api/admin/cases', tags=['管理后台'])
+def admin_create_case(data: dict):
+    try: return create_case(data)
+    except Exception as e: raise HTTPException(500, str(e))
+
+@app.put('/api/admin/cases/{case_id}', tags=['管理后台'])
+def admin_update_case(case_id: int, data: dict):
+    r = update_case(case_id, data)
+    if not r: raise HTTPException(404, 'not found')
+    return r
+
+@app.delete('/api/admin/cases/{case_id}', tags=['管理后台'])
+def admin_delete_case(case_id: int):
+    delete_case(case_id)
+    return {'success': True}
+
+@app.get('/api/admin/dedup', tags=['管理后台'])
+def admin_dedup(page: int = 1):
+    return list_dedup_records(page, 20)
+
+@app.get('/api/admin/alerts', tags=['管理后台'])
+def admin_alerts(page: int = 1, level: int = None):
+    return list_alerts(page, 20, level)
+
+@app.get('/api/admin/persons', tags=['管理后台'])
+def admin_persons(page: int = 1, person_type: str = ''):
+    return list_persons(page, 20, person_type)
+
+@app.post('/api/admin/persons', tags=['管理后台'])
+def admin_create_person(data: dict):
+    try: return create_person(data)
+    except Exception as e: raise HTTPException(500, str(e))
+
+@app.put('/api/admin/persons/{person_id}', tags=['管理后台'])
+def admin_update_person(person_id: int, data: dict):
+    r = update_person(person_id, data)
+    if not r: raise HTTPException(404, 'not found')
+    return r
+
+@app.delete('/api/admin/persons/{person_id}', tags=['管理后台'])
+def admin_delete_person(person_id: int):
+    delete_person(person_id)
+    return {'success': True}
+
+@app.get('/api/admin/followups', tags=['管理后台'])
+def admin_followups(person_id: int = None, page: int = 1):
+    return list_followups(person_id, page, 20)
+
+@app.post('/api/admin/followups', tags=['管理后台'])
+def admin_create_followup(data: dict):
+    try: return create_followup(data)
+    except Exception as e: raise HTTPException(500, str(e))
+
+@app.get('/api/admin/audit', tags=['管理后台'])
+def admin_audit(page: int = 1):
+    return list_audit_logs(page, 30)
+
+
 # ==================== Static Frontend ====================
 WEB_DIR = os.path.join(os.path.dirname(__file__), '..', 'web')
 if os.path.isdir(WEB_DIR):
@@ -430,6 +505,14 @@ def serve_index():
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {'message': '枫桥智盾 API 已启动', 'docs': '/docs'}
+
+@app.get('/admin')
+def serve_admin():
+    """后台管理页面"""
+    admin_path = os.path.join(WEB_DIR, 'admin.html')
+    if os.path.exists(admin_path):
+        return FileResponse(admin_path)
+    return {'message': '管理页面未找到'}
 
 
 # ==================== Entry ====================

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>枫桥智盾 · 后台管理</title>
+<style>
+:root {
+  --navy-900:#0A1F3F;--navy-700:#1B3A6B;--gold:#B8860B;--red:#C41E3A;--green:#1E8449;
+  --bg:#F5F3EF;--white:#FFF;--gray-100:#F0EDE8;--gray-200:#E2DDD6;--gray-400:#9C968D;--gray-600:#5C554A;--gray-800:#2D2820;
+  --radius:4px;--radius-lg:8px;
+  --font-body:"PingFang SC","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono","SF Mono","Consolas",monospace;
+  --transition:0.2s ease;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font-body);background:var(--bg);color:var(--gray-800);display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{width:200px;background:var(--navy-900);color:#fff;flex-shrink:0;padding:20px 0}
+.sidebar h2{padding:0 20px 16px;font-size:16px;letter-spacing:2px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:8px}
+.sidebar a{display:block;padding:10px 20px;color:rgba(255,255,255,.7);font-size:14px;cursor:pointer;text-decoration:none;transition:var(--transition)}
+.sidebar a:hover,.sidebar a.active{background:rgba(255,255,255,.1);color:#fff}
+.sidebar .back{font-size:12px;margin-top:20px;border-top:1px solid rgba(255,255,255,.1);padding-top:12px}
+
+/* Main */
+.main{flex:1;display:flex;flex-direction:column;overflow-x:hidden}
+.topbar{background:var(--white);padding:12px 28px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center}
+.topbar h3{font-size:16px;color:var(--navy-900)}
+.content{padding:20px 28px;flex:1;overflow-y:auto}
+
+/* Card */
+.card{background:var(--white);border-radius:var(--radius-lg);padding:20px 24px;box-shadow:0 1px 3px rgba(10,31,63,.06);margin-bottom:20px}
+.card h4{font-size:15px;font-weight:700;color:var(--navy-900);margin-bottom:16px}
+
+/* Search bar */
+.search-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.search-bar input,.search-bar select{padding:8px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;font-family:var(--font-body)}
+.search-bar input{width:200px}
+.search-bar button{padding:8px 16px;background:var(--navy-900);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-size:13px;font-weight:600}
+.search-bar .btn-sm{background:transparent;color:var(--navy-700);border:1px solid var(--gray-400)}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;color:var(--gray-600);font-weight:700;border-bottom:2px solid var(--gray-200);font-size:12px;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--gray-200);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr:hover td{background:#F8FAFD}
+.pagination{display:flex;gap:4px;align-items:center;margin-top:14px;font-size:13px;color:var(--gray-400)}
+.pagination button{padding:5px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);background:var(--white);cursor:pointer;font-size:12px}
+.pagination button.active{background:var(--navy-900);color:#fff;border-color:var(--navy-900)}
+.pagination button:disabled{opacity:.4;cursor:default}
+
+/* Tag */
+.tag{display:inline-block;padding:2px 8px;border-radius:2px;font-size:11px;font-weight:700}
+.tag-r{background:#FEF0F2;color:var(--red)}
+.tag-o{background:#FFF8F0;color:#E67E22}
+.tag-g{background:#EEFAF3;color:var(--green)}
+.tag-b{background:#E8EEF5;color:var(--navy-700)}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--white);border-radius:var(--radius-lg);width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.modal h3{padding:16px 20px;font-size:16px;color:var(--navy-900);border-bottom:1px solid var(--gray-200);position:sticky;top:0;background:var(--white)}
+.modal form{padding:16px 20px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal form .full{grid-column:1/-1}
+.modal form label{font-size:12px;font-weight:700;color:var(--gray-600);display:block;margin-bottom:4px}
+.modal form input,.modal form select,.modal form textarea{padding:8px 10px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;font-family:var(--font-body);width:100%}
+.modal form textarea{resize:vertical;min-height:60px}
+.modal .btn-row{display:flex;gap:8px;padding:12px 20px;justify-content:flex-end;border-top:1px solid var(--gray-200);position:sticky;bottom:0;background:var(--white)}
+.modal .btn-row button{padding:8px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;border:none}
+.btn-primary{background:var(--navy-900);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn-cancel{background:var(--gray-100);color:var(--gray-600)}
+
+/* Action btns */
+.act-btn{padding:3px 8px;font-size:11px;border-radius:2px;cursor:pointer;border:none;margin:0 2px;font-weight:600}
+.act-edit{background:#E8EEF5;color:var(--navy-700)}
+.act-del{background:#FEF0F2;color:var(--red)}
+
+.hidden{display:none}
+</style>
+</head>
+<body>
+<nav class="sidebar">
+  <h2>枫桥智盾 · 管理</h2>
+  <a class="active" data-tab="cases" onclick="switchTab('cases')">📋 案件管理</a>
+  <a data-tab="dedup" onclick="switchTab('dedup')">🔄 去重记录</a>
+  <a data-tab="alerts" onclick="switchTab('alerts')">🔔 预警事件</a>
+  <a data-tab="persons" onclick="switchTab('persons')">👤 人员档案</a>
+  <a data-tab="audit" onclick="switchTab('audit')">📜 审计日志</a>
+  <a class="back" href="/">← 返回驾驶舱</a>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <h3 id="tabTitle">案件管理</h3>
+    <span style="font-size:12px;color:var(--gray-400);" id="recordCount"></span>
+  </div>
+  <div class="content" id="tabContent"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay"><div class="modal"><div id="modalInner"></div></div></div>
+
+<script>
+const API = window.location.port === '5000' ? '' : 'http://localhost:5000';
+let currentTab = 'cases';
+let currentPage = 1;
+
+// ==================== TABS ====================
+const tabs = {
+  cases: {
+    title: '案件管理',
+    search: true,
+    load: async (page) => {
+      const d = document.getElementById('caseDistrict')?.value || '';
+      const t = document.getElementById('caseType')?.value || '';
+      const k = document.getElementById('caseKeyword')?.value || '';
+      const r = await fetch(`${API}/api/admin/cases?page=${page}&district=${d}&dispute_type=${t}&keyword=${k}`);
+      return r.json();
+    },
+    renderRow: (c) => `
+      <tr>
+        <td>${c.id}</td><td>${c.case_code}</td><td>${c.dispute_type||''}</td>
+        <td>${c.district||''}</td><td>${(c.parties||'').slice(0,20)}</td>
+        <td>¥${(c.amount||0).toFixed(0)}</td>
+        <td>${levelTag(c.dedup_status)}</td>
+        <td><span class="act-btn act-edit" onclick="editCase(${c.id})">编辑</span><span class="act-btn act-del" onclick="delCase(${c.id})">删除</span></td>
+      </tr>`,
+    searchHTML: `
+      <input id="caseDistrict" placeholder="区域筛选"><input id="caseType" placeholder="类型筛选"><input id="caseKeyword" placeholder="关键词">
+      <button onclick="refreshTab()">搜索</button><button class="btn-sm" onclick="showCaseForm()">+ 新增案件</button>`,
+  },
+  dedup: {
+    title: '去重记录', search: false,
+    load: async (page) => { const r=await fetch(`${API}/api/admin/dedup?page=${page}`); return r.json(); },
+    renderRow: (d) => `<tr><td>${d.id}</td><td>${d.case_id} ↔ ${d.matched_case_id}</td><td>📞${d.score_phone} 📍${d.score_address} 🧠${d.score_semantic} 👤${d.score_name}</td><td><span class="tag tag-o">${d.total_score}分</span></td><td>${d.is_confirmed?'已确认':'未确认'}</td></tr>`,
+  },
+  alerts: {
+    title: '预警事件', search: false,
+    load: async (page) => { const r=await fetch(`${API}/api/admin/alerts?page=${page}`); return r.json(); },
+    renderRow: (a) => `<tr><td>${a.id}</td><td>${a.case_id}</td><td>${['','🟡黄','🟠橙','🔴红'][a.alert_level]||'?'}</td><td>${a.rule_type}</td><td>${a.channel_count}渠道</td><td>${a.is_pushed?'✅已推送':'⏳未推送'}</td></tr>`,
+  },
+  persons: {
+    title: '人员档案', search: false,
+    load: async (page) => { const t=document.getElementById('personType')?.value||''; const r=await fetch(`${API}/api/admin/persons?page=${page}&person_type=${t}`); return r.json(); },
+    renderRow: (p) => `<tr><td>${p.id}</td><td>${p.name}</td><td>${p.person_type}</td><td>${['','低','中','高'][p.risk_level]||'?'}风险</td><td>${p.district||''}</td><td><span class="act-btn act-edit" onclick="editPerson(${p.id})">编辑</span><span class="act-btn act-del" onclick="delPerson(${p.id})">删除</span></td></tr>`,
+    searchHTML: `<input id="personType" placeholder="人员类型"><button onclick="refreshTab()">搜索</button><button class="btn-sm" onclick="showPersonForm()">+ 新增人员</button>`,
+  },
+  audit: {
+    title: '审计日志', search: false,
+    load: async (page) => { const r=await fetch(`${API}/api/admin/audit?page=${page}`); return r.json(); },
+    renderRow: (l) => `<tr><td>${l.id}</td><td>${l.target_type}</td><td>${l.target_id}</td><td>${l.action}</td><td>${l.operator}</td><td>${(l.created_at||'').slice(0,19)}</td></tr>`,
+  },
+};
+
+function levelTag(v){ const m={0:['未检测',''],1:['唯一','tag-g'],2:['疑似重复','tag-o'],3:['确认重复','tag-r']}; const [t,c]=m[v]||m[0]; return `<span class="tag ${c}">${t}</span>` }
+
+// ==================== SWITCH ====================
+function switchTab(name) {
+  currentTab = name; currentPage = 1;
+  document.querySelectorAll('.sidebar a[data-tab]').forEach(a=>a.classList.remove('active'));
+  document.querySelector(`[data-tab="${name}"]`).classList.add('active');
+  document.getElementById('tabTitle').textContent = tabs[name].title;
+  refreshTab();
+}
+
+async function refreshTab() {
+  const t = tabs[currentTab];
+  const data = await t.load(currentPage);
+  document.getElementById('recordCount').textContent = `共 ${data.total} 条`;
+  const pages = Math.ceil(data.total / 20);
+  let html = '';
+  if (t.searchHTML) html += `<div class="search-bar">${t.searchHTML}</div>`;
+  html += `<table><thead><tr>${Object.keys(data.rows[0]||{}).map(k=>`<th>${k}</th>`).join('')}<th>操作</th></tr></thead><tbody>${data.rows.map(t.renderRow).join('')}</tbody></table>`;
+  html += `<div class="pagination"><button ${currentPage<=1?'disabled':''} onclick="goPage(${currentPage-1})">上一页</button>`;
+  for (let i=Math.max(1,currentPage-2);i<=Math.min(pages,currentPage+2);i++) html+=`<button class="${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  html+=`<button ${currentPage>=pages?'disabled':''} onclick="goPage(${currentPage+1})">下一页</button><span>第${currentPage}/${pages}页</span></div>`;
+  document.getElementById('tabContent').innerHTML = html;
+}
+
+function goPage(p) { currentPage = p; refreshTab(); }
+
+// ==================== MODAL ====================
+function openModal(title, bodyHTML) {
+  document.getElementById('modalInner').innerHTML = `<h3>${title}</h3>${bodyHTML}`;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+// ==================== CASE CRUD ====================
+async function showCaseForm(data=null) {
+  const isEdit = !!data;
+  const d = data || {};
+  openModal(isEdit?'编辑案件':'新增案件', `
+    <form id="caseForm">
+      <div><label>案件编码</label><input name="case_code" value="${d.case_code||''}"></div>
+      <div><label>纠纷类型</label><input name="dispute_type" value="${d.dispute_type||''}"></div>
+      <div><label>案件来源</label><input name="case_source" value="${d.case_source||''}"></div>
+      <div><label>行政区域</label><input name="district" value="${d.district||''}"></div>
+      <div><label>当事人</label><input name="parties" value="${d.parties||''}"></div>
+      <div><label>涉及金额</label><input name="amount" type="number" step="0.01" value="${d.amount||0}"></div>
+      <div class="full"><label>纠纷描述</label><textarea name="description">${d.description||''}</textarea></div>
+      <div><label>调解结果</label><input name="mediation_result" value="${d.mediation_result||''}"></div>
+      <div><label>预警等级</label><select name="alert_level"><option value="0" ${d.alert_level==0?'selected':''}>无</option><option value="1" ${d.alert_level==1?'selected':''}>黄色</option><option value="2" ${d.alert_level==2?'selected':''}>橙色</option><option value="3" ${d.alert_level==3?'selected':''}>红色</option></select></div>
+    </form>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="saveCase(${isEdit?d.id:0})">${isEdit?'保存':'创建'}</button>
+    </div>`);
+}
+
+async function editCase(id) {
+  const r = await fetch(`${API}/api/admin/cases/${id}`); showCaseForm(await r.json());
+}
+
+async function saveCase(id) {
+  const form = document.getElementById('caseForm');
+  const data = Object.fromEntries(new FormData(form));
+  const url = id ? `${API}/api/admin/cases/${id}` : `${API}/api/admin/cases`;
+  const method = id ? 'PUT' : 'POST';
+  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  closeModal(); refreshTab();
+}
+
+async function delCase(id) {
+  if (!confirm('确认删除？')) return;
+  await fetch(`${API}/api/admin/cases/${id}`, { method: 'DELETE' });
+  refreshTab();
+}
+
+// ==================== PERSON CRUD ====================
+async function showPersonForm(data=null) {
+  const isEdit = !!data;
+  const d = data || {};
+  openModal(isEdit?'编辑人员':'新增人员', `
+    <form id="personForm">
+      <div><label>姓名</label><input name="name" value="${d.name||''}"></div>
+      <div><label>人员类型</label><input name="person_type" value="${d.person_type||''}"></div>
+      <div><label>风险等级</label><select name="risk_level"><option value="1" ${d.risk_level==1?'selected':''}>低</option><option value="2" ${d.risk_level==2?'selected':''}>中</option><option value="3" ${d.risk_level==3?'selected':''}>高</option></select></div>
+      <div><label>所属区域</label><input name="district" value="${d.district||''}"></div>
+      <div><label>联系电话</label><input name="phone" value="${d.phone||''}"></div>
+      <div><label>涉管部门</label><input name="departments" value="${d.departments||''}"></div>
+      <div class="full"><label>备注</label><textarea name="remark">${d.remark||''}</textarea></div>
+    </form>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="savePerson(${isEdit?d.id:0})">${isEdit?'保存':'创建'}</button>
+    </div>`);
+}
+
+async function editPerson(id) {
+  const r = await fetch(`${API}/api/admin/persons?page=1`);
+  const data = await r.json();
+  const p = data.rows.find(x => x.id == id);
+  if (p) showPersonForm(p);
+}
+
+async function savePerson(id) {
+  const form = document.getElementById('personForm');
+  const data = Object.fromEntries(new FormData(form));
+  const url = id ? `${API}/api/admin/persons/${id}` : `${API}/api/admin/persons`;
+  const method = id ? 'PUT' : 'POST';
+  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  closeModal(); refreshTab();
+}
+
+async function delPerson(id) {
+  if (!confirm('确认删除？关联随访记录将一并删除。')) return;
+  await fetch(`${API}/api/admin/persons/${id}`, { method: 'DELETE' });
+  refreshTab();
+}
+
+// Init
+switchTab('cases');
+</script>
+</body>
+</html>
