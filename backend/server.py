@@ -25,7 +25,7 @@ from models import (
     Policy, AuditLog, CategoryMapping, CaseTag, CaseTagRelation,
     get_session, init_db,
 )
-from ai_service import semantic_similarity
+from ai_service import semantic_similarity, field_scores
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -310,7 +310,9 @@ def run_dedup(req: DedupRequest):
                     }
                     ai_result = semantic_similarity(new_dict, match_dict)
                     score_semantic = ai_result['score']
-                    scores = {'phone': 35, 'address': 28, 'semantic': score_semantic, 'name': 8}
+                    # 逐字段实际比对 phone/address/name，不再硬编码满分
+                    f_scores = field_scores(new_dict, match_dict)
+                    scores = {'phone': f_scores['phone'], 'address': f_scores['address'], 'semantic': score_semantic, 'name': f_scores['name']}
                     total = sum(scores.values())
                     session.add(DedupRecord(
                         case_id=cid, matched_case_id=m.id,

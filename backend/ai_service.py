@@ -14,6 +14,62 @@ ST_MODEL_NAME = os.getenv('ST_MODEL', 'paraphrase-multilingual-MiniLM-L12-v2')
 
 _st_model = None
 
+
+def extract_digits(s: str) -> str:
+    """提取字符串中的数字，用于电话号码模糊比对"""
+    return ''.join(c for c in s if c.isdigit())
+
+
+def normalize_address(s: str) -> str:
+    """地址标准化：去空格、统一符号"""
+    return s.replace(' ', '').replace('　', '').replace('-', '').replace('，', ',').replace('、', ',')
+
+
+def field_scores(case_a: dict, case_b: dict) -> dict:
+    """
+    逐字段比对两个案件的 phone / address / name，返回实际得分
+    """
+    # 电话匹配 (0-40)
+    phone_a = extract_digits(case_a.get('parties', '') + case_a.get('description', ''))
+    phone_b = extract_digits(case_b.get('parties', '') + case_b.get('description', ''))
+    if phone_a and phone_b and len(phone_a) >= 11 and len(phone_b) >= 11:
+        # 比较后 8 位（排除区号和格式差异）
+        if phone_a[-8:] == phone_b[-8:]:
+            score_phone = 40
+        elif phone_a[-6:] == phone_b[-6:]:
+            score_phone = 30
+        elif phone_a[-4:] == phone_b[-4:]:
+            score_phone = 15
+        else:
+            score_phone = 0
+    else:
+        # 无足够数字信息时，检查 parties 字段重叠度
+        parties_a = set(c.split(',')[0].strip() for c in case_a.get('parties', '').split(','))
+        parties_b = set(c.split(',')[0].strip() for c in case_b.get('parties', '').split(','))
+        overlap = len(parties_a & parties_b)
+        score_phone = min(overlap * 15, 40) if overlap > 0 else 0
+
+    # 地址匹配 (0-30)
+    addr_a = normalize_address(case_a.get('district', ''))
+    addr_b = normalize_address(case_b.get('district', ''))
+    if addr_a and addr_b and addr_a == addr_b:
+        score_address = 30
+    elif addr_a and addr_b:
+        # 部分匹配：乡镇级别相同
+        chunk_a = addr_a[:2] if len(addr_a) >= 2 else addr_a
+        chunk_b = addr_b[:2] if len(addr_b) >= 2 else addr_b
+        score_address = 15 if chunk_a == chunk_b else 5
+    else:
+        score_address = 0
+
+    # 姓名匹配 (0-10)
+    names_a = set(c.split(',')[0].strip() for c in case_a.get('parties', '').split(','))
+    names_b = set(c.split(',')[0].strip() for c in case_b.get('parties', '').split(','))
+    overlap = len(names_a & names_b)
+    score_name = min(overlap * 10, 10) if overlap > 0 else 0
+
+    return {'phone': score_phone, 'address': score_address, 'name': score_name}
+
 def _get_st_model():
     """延迟加载 sentence-transformers 模型"""
     global _st_model
