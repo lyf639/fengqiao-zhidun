@@ -1,6 +1,16 @@
 """
-枫桥智盾 · 后台管理 API
-CRUD 端点：案件 / 去重记录 / 预警事件 / 人员档案 / 随访记录 / 审计日志
+枫桥智盾 · 后台管理 API 逻辑层
+=============================
+
+提供 6 大模块的 CRUD 操作：
+  1. 案件管理：list / get / create / update / delete
+  2. 去重记录：list（只读）
+  3. 预警事件：list（只读）
+  4. 人员档案：list / create / update / delete
+  5. 随访记录：list / create
+  6. 审计日志：list（只读）
+
+所有接口在 server.py 中挂载，受 JWT 认证保护（verify_token）
 """
 from datetime import datetime, date
 from sqlalchemy import func, desc

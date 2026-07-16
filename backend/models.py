@@ -1,5 +1,28 @@
 """
-枫桥智盾 · SQLAlchemy ORM 模型
+枫桥智盾 · SQLAlchemy ORM 模型层
+==================================
+
+本文件定义了项目全部 11 张数据库表的 ORM 映射，包括：
+  1. Case（案件）           - 核心业务表，Excel导入的目标
+  2. DedupRecord（去重记录）  - 记录每次比对的四维得分
+  3. AlertEvent（预警事件）   - 触发规则、等级、推送状态
+  4. PersonProfile（人员档案） - 重点人员一人一档
+  5. FollowUpRecord（随访）   - 关联人员的随访时间轴
+  6. Policy（政策库）         - 政策匹配数据源
+  7. AuditLog（审计日志）     - 全操作链路记录
+  8. User（系统用户）         - 后台登录账号
+  9. CategoryMapping（分类映射）- 上游系统分类名→标准分类
+ 10. CaseTag（案件标签）      - 多维标签体系
+ 11. CaseTagRelation（关联表） - 多对多中间表
+
+数据表关系：
+  Case 1──N DedupRecord（case_id, matched_case_id 双外键）
+  Case 1──N AlertEvent
+  PersonProfile 1──N FollowUpRecord
+  Case M──N CaseTag（通过 CaseTagRelation）
+
+连接配置：环境变量 DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME
+生产切换：修改 DATABASE_URL 即可（如切换到 PostgreSQL）
 """
 from datetime import datetime
 from sqlalchemy import (

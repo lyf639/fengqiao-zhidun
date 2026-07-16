@@ -1,7 +1,24 @@
 """
 枫桥智盾 · AI 语义服务
-支持：本地 ST (sentence-transformers) / Ollama (deepseek-r1) / 云端 DeepSeek-v4-pro / 模拟回退
-切换方式：环境变量 AI_BACKEND=st|ollama|deepseek|mock
+=====================
+
+四后端插件架构：
+  1. deepseek   —— 云端 DeepSeek-v4-pro（需 API Key）
+  2. ollama     —— 本地 Ollama 运行 deepseek-r1 蒸馏模型
+  3. st         —— 本地 Sentence-Transformers 向量模型
+  4. mock       —— 规则引擎兜底（关键词+类型+区域）
+
+降级策略（field_scores 内部）：
+  AI_BACKEND=deepseek 不可用 → ollama 不可用 → st 不可用 → mock 兜底
+
+核心函数：
+  semantic_similarity(a, b)  → {'score': 0-20, 'reason': '...', 'backend': '...'}
+  field_scores(a, b)          → {'phone': 0-40, 'address': 0-30, 'name': 0-10}
+
+使用示例：
+  result = semantic_similarity(case_a, case_b)
+  print(result['score'])   # 18.5（满分 20）
+  print(result['backend']) # 'deepseek'
 """
 import os, json, requests
 
@@ -28,6 +45,11 @@ def normalize_address(s: str) -> str:
 def field_scores(case_a: dict, case_b: dict) -> dict:
     """
     逐字段比对两个案件的 phone / address / name，返回实际得分
+    
+    评分规则（总分 80 = phone 40 + address 30 + name 10）：
+    - 电话：提取数字，后8位全匹配=40分，后6位=30分，后4位=15分，无关=0分
+    - 地址：乡镇完全相同=30分，前2字相同=15分，不同=5分
+    - 姓名：当事人交集数量 × 10 分（上限10分）
     """
     # 电话匹配 (0-40)
     phone_a = extract_digits(case_a.get('parties', '') + case_a.get('description', ''))

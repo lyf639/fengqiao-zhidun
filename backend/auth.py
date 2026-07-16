@@ -1,6 +1,18 @@
 """
 枫桥智盾 · 认证模块
-JWT Token + bcrypt 密码哈希
+==================
+
+JWT Token 签发/验证 + bcrypt 密码哈希
+
+认证流程：
+  1. 前端 POST /api/auth/login {username, password}
+  2. 后端验证 bcrypt 哈希 → 签发 JWT（24h 过期）
+  3. 前端存 token 到 localStorage
+  4. 后续请求带 Authorization: Bearer <token>
+  5. 后端 verify_token() 验证 → 通过/401
+
+默认管理员：admin / admin123（首次启动自动创建）
+环境变量：JWT_SECRET（密钥）、JWT_EXPIRE_HOURS（过期时间）
 """
 import os, jwt, bcrypt
 from datetime import datetime, timedelta

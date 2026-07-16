@@ -1,6 +1,16 @@
 ﻿// 枫桥智盾 · 四步Demo流程
+// ======================
+// 负责：Excel导入→智能去重→风险预警→处置跟进 完整闭环
+// 依赖：SheetJS（Excel解析）、cockpit.js（API_BASE、enterDemo/backToCockpit）
+//
+// 数据流：
+//   拖入Excel → SheetJS解析 → POST /api/import → MySQL入库
+//   → POST /api/dedup → 去重比对+AI语义 → 渲染结果
+//   → POST /api/alert → 规则引擎扫描 → 红橙黄预警
+//   → 展示处置跟进时间轴
 
-// ===== DEMO PROGRESS =====
+// ===== 进度条控制 =====
+// 顶部四步进度条，current=当前步，done=已完成
 function setProgress(n) {
   document.querySelectorAll('#progressSteps .progress-step').forEach(el => {
     const s = parseInt(el.dataset.step);
@@ -23,7 +33,8 @@ function showStep(n) {
 // 自动适配：直接访问(localhost:5000)用空路径，跨域访问(localhost:3000)用完整URL
 const API_BASE = window.location.port === '5000' ? '' : 'http://localhost:5000';
 
-// ===== STEP 1: EXCEL IMPORT =====
+// ===== 第一步：Excel 导入 =====
+// 拖拽/点击上传 → SheetJS解析 → 字段映射 → 表格预览
 let importedData = [];
 let importBatch = '';
 let importedCaseIds = [];
@@ -77,7 +88,11 @@ zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add(
 zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
 zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) { document.getElementById('fileInput').files = e.dataTransfer.files; handleFile({ target: { files: [f] } }); } });
 
-// ===== STEP 2 =====
+// ===== 第二步：智能去重 =====
+// ① POST /api/import 写入MySQL
+// ② GET /api/cases 获取新案件ID
+// ③ POST /api/dedup 执行四维比对+AI语义
+// ④ 渲染去重结果列表
 async function goToStep2() {
   if (importedData.length === 0) { alert('请先导入Excel'); return; }
   showStep(2);
@@ -144,6 +159,8 @@ async function goToStep2() {
   document.getElementById('dedupContent').style.display = 'block';
 }
 
+// ===== 第三步：风险预警 =====
+// 动画模拟检索过程 → POST /api/alert → 渲染红橙预警结果
 async function confirmDedup() {
   showStep(3);
   runAlertAnim();
@@ -182,8 +199,12 @@ async function runAlertAnim() {
     `;
   }
 }
+// ===== 第四步：处置跟进 =====
+// 时间轴展示全流程 + 处置方案表单 + 闭环归档
 function goToStep4() { showStep(4); }
 function completeStep4() { const r = document.getElementById('step4Result'); r.classList.add('show'); r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+// ===== 重置 =====
+// 清空所有状态，恢复到第一步
 function resetAll() {
   showStep(1); importedData = []; importBatch = ''; importedCaseIds = [];
   document.getElementById('importSummary').classList.remove('show');

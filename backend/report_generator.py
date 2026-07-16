@@ -1,6 +1,19 @@
 """
 枫桥智盾 · AI 分析报告生成器
-支持月度/季度/年度报告，统计 + AI 叙事分析（云→本→规则三级降级）
+===========================
+
+三级降级策略：DeepSeek-v4-pro → Ollama 本地 → 规则引擎兜底
+
+报告结构（三段式）：
+  一、总体态势：事件总数、化解率、金额、预警概览
+  二、重点分析：高发类型、重点区域、主要来源渠道
+  三、工作建议：基于统计数据的 3 条具体建议
+
+使用方式：
+  POST /api/report/generate
+  {"period": "monthly", "year": 2026, "month": 6}
+  {"period": "quarterly", "year": 2026, "quarter": 2}
+  {"period": "yearly", "year": 2026}
 """
 import json, os
 from datetime import datetime, timedelta

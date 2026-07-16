@@ -1,6 +1,32 @@
 """
-枫桥智盾 · FastAPI 后端服务
-uvicorn server:app --host 0.0.0.0 --port 5000 --reload
+枫桥智盾 · FastAPI 后端主服务
+=====================================
+
+启动方式：python backend/server.py 或 uvicorn backend.server:app --port 5000
+
+架构概览：
+  前端浏览器 ──→ FastAPI(本文件) ──→ SQLAlchemy ORM ──→ MySQL 8.4
+                              ├──→ fakeredis（内存缓存/动态流）
+                              ├──→ ai_service（语义相似度）
+                              ├──→ report_generator（AI分析报告）
+                              ├──→ admin_api（后台CRUD）
+                              └──→ auth（JWT认证）
+
+API 分组（对应 Swagger Tags）：
+  - 驾驶舱：/api/dashboard, /api/feed
+  - 统计：/api/stats
+  - 案件：/api/cases
+  - 导入：/api/import
+  - 去重：/api/dedup
+  - 预警：/api/alert
+  - 智能报告：/api/report/generate
+  - 认证：/api/auth/login
+  - 管理后台：/api/admin/*
+
+环境变量（.env）：
+  AI_BACKEND     AI服务后端选择（deepseek/ollama/st/mock）
+  DEEPSEEK_API_KEY   DeepSeek云端API密钥
+  DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME  数据库连接
 """
 import json, uuid, sys, os
 from datetime import datetime
@@ -55,6 +81,7 @@ r = fakeredis.FakeRedis(decode_responses=True)
 
 
 def init_cache():
+    """初始化 Redis 缓存数据结构，确保 dashboard 计数器和 feed 列表存在"""
     if not r.exists('dashboard:total'):
         r.hset('dashboard:total', mapping={'value': 0, 'label': '累计案件数'})
         r.hset('dashboard:dedup', mapping={'value': 0, 'label': '智能去重识别'})
@@ -64,6 +91,7 @@ def init_cache():
 
 
 def push_feed(msg: str, feed_type: str = 'info'):
+    """向驾驶舱实时动态流推送一条消息，保留最近 50 条"""
     item = json.dumps({'msg': msg, 'type': feed_type, 'time': datetime.now().strftime('%H:%M:%S')},
                        ensure_ascii=False)
     r.lpush('feed:list', item)
@@ -109,7 +137,9 @@ class AlertRequest(BaseModel):
     case_ids: list[int] = Field(..., min_length=1)
 
 
-# ==================== Helpers ====================
+# ==================== 日期/金额解析工具 ====================
+
+# 前端字段名 → 数据库列名 映射表（处理不同系统导出Excel的字段名差异）
 FIELD_MAP = {
     'caseCode': 'case_code', 'agreementType': 'agreement_type',
     'caseSource': 'case_source', 'mediationOrg': 'mediation_org',
@@ -124,6 +154,11 @@ FIELD_MAP = {
 
 
 def parse_datetime(val):
+    """
+    多格式日期解析器
+    上游系统导出的Excel日期格式不统一（2026-01-01 / 2026/01/01 / 20260101），
+    按优先级尝试常见格式，全部失败返回 None
+    """
     if not val: return None
     for fmt in ['%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%Y/%m/%d %H:%M:%S', '%Y/%m/%d']:
         try: return datetime.strptime(str(val).strip(), fmt)
@@ -132,6 +167,7 @@ def parse_datetime(val):
 
 
 def parse_amount(val):
+    """金额解析：去掉千分位逗号、中文逗号，转为浮点数"""
     if not val or str(val).strip() == '': return 0.0
     try: return float(str(val).replace(',', '').replace('，', ''))
     except ValueError: return 0.0
@@ -215,6 +251,7 @@ def import_cases(req: ImportRequest):
 
     try:
         for rec in req.records:
+            # 字段映射：前端 camelCase → 数据库 snake_case
             d = rec.model_dump()
             mapped = {FIELD_MAP.get(k, k): v for k, v in d.items()}
 
@@ -241,7 +278,7 @@ def import_cases(req: ImportRequest):
             )
             session.add(case)
             try:
-                session.flush()
+                session.flush()  # 逐条刷入，遇到重复 case_code 跳过
                 inserted += 1
             except IntegrityError:
                 session.rollback()
