@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
 import fakeredis
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -26,6 +26,7 @@ from models import (
     get_session, init_db,
 )
 from ai_service import semantic_similarity, field_scores
+from auth import login as auth_login, verify_token, seed_default_user
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -141,6 +142,7 @@ def parse_amount(val):
 def startup():
     init_db()
     init_cache()
+    seed_default_user()
     print('枫桥智盾 FastAPI 已启动')
     print('Swagger 文档: http://localhost:5000/docs')
     print('ReDoc 文档:  http://localhost:5000/redoc')
@@ -427,71 +429,91 @@ def generate_ai_report(req: ReportRequest):
 
 # ==================== Admin API ====================
 
+@app.post('/api/auth/login', tags=['认证'])
+def api_login(data: dict):
+    """管理员登录，返回 JWT Token"""
+    return auth_login(data.get('username', ''), data.get('password', ''))
+
+
 @app.get('/api/admin/cases', tags=['管理后台'])
-def admin_cases(page: int = 1, district: str = '', dispute_type: str = '', keyword: str = ''):
+def admin_cases(request: Request, page: int = 1, district: str = '', dispute_type: str = '', keyword: str = ''):
+    verify_token(request)
     return admin_list_cases(page, 20, district, dispute_type, keyword)
 
 @app.get('/api/admin/cases/{case_id}', tags=['管理后台'])
-def admin_get_case(case_id: int):
+def admin_get_case(request: Request, case_id: int):
+    verify_token(request)
     r = get_case(case_id)
     if not r: raise HTTPException(404, 'not found')
     return r
 
 @app.post('/api/admin/cases', tags=['管理后台'])
-def admin_create_case(data: dict):
+def admin_create_case(request: Request, data: dict):
+    verify_token(request)
     try: return create_case(data)
     except Exception as e: raise HTTPException(500, str(e))
 
 @app.put('/api/admin/cases/{case_id}', tags=['管理后台'])
-def admin_update_case(case_id: int, data: dict):
+def admin_update_case(request: Request, case_id: int, data: dict):
+    verify_token(request)
     r = update_case(case_id, data)
     if not r: raise HTTPException(404, 'not found')
     return r
 
 @app.delete('/api/admin/cases/{case_id}', tags=['管理后台'])
-def admin_delete_case(case_id: int):
+def admin_delete_case(request: Request, case_id: int):
+    verify_token(request)
     delete_case(case_id)
     return {'success': True}
 
 @app.get('/api/admin/dedup', tags=['管理后台'])
-def admin_dedup(page: int = 1):
+def admin_dedup(request: Request, page: int = 1):
+    verify_token(request)
     return list_dedup_records(page, 20)
 
 @app.get('/api/admin/alerts', tags=['管理后台'])
-def admin_alerts(page: int = 1, level: int = None):
+def admin_alerts(request: Request, page: int = 1, level: int = None):
+    verify_token(request)
     return list_alerts(page, 20, level)
 
 @app.get('/api/admin/persons', tags=['管理后台'])
-def admin_persons(page: int = 1, person_type: str = ''):
+def admin_persons(request: Request, page: int = 1, person_type: str = ''):
+    verify_token(request)
     return list_persons(page, 20, person_type)
 
 @app.post('/api/admin/persons', tags=['管理后台'])
-def admin_create_person(data: dict):
+def admin_create_person(request: Request, data: dict):
+    verify_token(request)
     try: return create_person(data)
     except Exception as e: raise HTTPException(500, str(e))
 
 @app.put('/api/admin/persons/{person_id}', tags=['管理后台'])
-def admin_update_person(person_id: int, data: dict):
+def admin_update_person(request: Request, person_id: int, data: dict):
+    verify_token(request)
     r = update_person(person_id, data)
     if not r: raise HTTPException(404, 'not found')
     return r
 
 @app.delete('/api/admin/persons/{person_id}', tags=['管理后台'])
-def admin_delete_person(person_id: int):
+def admin_delete_person(request: Request, person_id: int):
+    verify_token(request)
     delete_person(person_id)
     return {'success': True}
 
 @app.get('/api/admin/followups', tags=['管理后台'])
-def admin_followups(person_id: int = None, page: int = 1):
+def admin_followups(request: Request, person_id: int = None, page: int = 1):
+    verify_token(request)
     return list_followups(person_id, page, 20)
 
 @app.post('/api/admin/followups', tags=['管理后台'])
-def admin_create_followup(data: dict):
+def admin_create_followup(request: Request, data: dict):
+    verify_token(request)
     try: return create_followup(data)
     except Exception as e: raise HTTPException(500, str(e))
 
 @app.get('/api/admin/audit', tags=['管理后台'])
-def admin_audit(page: int = 1):
+def admin_audit(request: Request, page: int = 1):
+    verify_token(request)
     return list_audit_logs(page, 30)
 
 

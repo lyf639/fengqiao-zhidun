@@ -108,6 +108,61 @@ const API = window.location.port === '5000' ? '' : 'http://localhost:5000';
 let currentTab = 'cases';
 let currentPage = 1;
 
+// ==================== AUTH ====================
+function getToken() { return localStorage.getItem('fq_token'); }
+function setToken(t) { localStorage.setItem('fq_token', t); }
+function clearAuth() { localStorage.removeItem('fq_token'); localStorage.removeItem('fq_user'); }
+function isLoggedIn() { return !!getToken(); }
+
+async function fetchAuth(url, options = {}) {
+  const token = getToken();
+  const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+  const resp = await fetch(url, { ...options, headers });
+  if (resp.status === 401) { clearAuth(); showLogin(); throw new Error('unauthorized'); }
+  return resp;
+}
+
+function showLogin() {
+  document.querySelector('.sidebar').style.display = 'none';
+  document.querySelector('.main').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg);">
+      <div style="background:var(--white);padding:40px;border-radius:var(--radius-lg);width:380px;box-shadow:0 4px 20px rgba(0,0,0,.1);">
+        <h2 style="text-align:center;color:var(--navy-900);margin-bottom:24px;">枫桥智盾 · 后台管理</h2>
+        <div style="margin-bottom:16px;"><label style="font-size:13px;font-weight:700;color:var(--gray-600);">用户名</label><input id="loginUser" style="width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:14px;margin-top:4px;" placeholder="admin"></div>
+        <div style="margin-bottom:20px;"><label style="font-size:13px;font-weight:700;color:var(--gray-600);">密码</label><input id="loginPass" type="password" style="width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:14px;margin-top:4px;" placeholder="······"></div>
+        <button onclick="doLogin()" style="width:100%;padding:12px;background:var(--navy-900);color:#fff;border:none;border-radius:var(--radius);font-size:15px;font-weight:700;cursor:pointer;">登 录</button>
+        <p id="loginError" style="color:var(--red);font-size:13px;text-align:center;margin-top:12px;display:none;"></p>
+      </div>
+    </div>`;
+  document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+}
+
+async function doLogin() {
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  try {
+    const resp = await fetch(API + '/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p })
+    });
+    const data = await resp.json();
+    if (data.token) {
+      setToken(data.token);
+      localStorage.setItem('fq_user', data.display_name);
+      location.reload();
+    } else {
+      errEl.textContent = data.detail || '登录失败';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = '无法连接服务器';
+    errEl.style.display = 'block';
+  }
+}
+
+// ==================== INIT ====================
+if (!isLoggedIn()) { showLogin(); } else { switchTab('cases'); }
+
 // ==================== TABS ====================
 const tabs = {
   cases: {
@@ -117,7 +172,7 @@ const tabs = {
       const d = document.getElementById('caseDistrict')?.value || '';
       const t = document.getElementById('caseType')?.value || '';
       const k = document.getElementById('caseKeyword')?.value || '';
-      const r = await fetch(`${API}/api/admin/cases?page=${page}&district=${d}&dispute_type=${t}&keyword=${k}`);
+      const r = await fetchAuth(`${API}/api/admin/cases?page=${page}&district=${d}&dispute_type=${t}&keyword=${k}`);
       return r.json();
     },
     renderRow: (c) => `
@@ -134,23 +189,23 @@ const tabs = {
   },
   dedup: {
     title: '去重记录', search: false,
-    load: async (page) => { const r=await fetch(`${API}/api/admin/dedup?page=${page}`); return r.json(); },
+    load: async (page) => { const r=await fetchAuth(`${API}/api/admin/dedup?page=${page}`); return r.json(); },
     renderRow: (d) => `<tr><td>${d.id}</td><td>${d.case_id} ↔ ${d.matched_case_id}</td><td>📞${d.score_phone} 📍${d.score_address} 🧠${d.score_semantic} 👤${d.score_name}</td><td><span class="tag tag-o">${d.total_score}分</span></td><td>${d.is_confirmed?'已确认':'未确认'}</td></tr>`,
   },
   alerts: {
     title: '预警事件', search: false,
-    load: async (page) => { const r=await fetch(`${API}/api/admin/alerts?page=${page}`); return r.json(); },
+    load: async (page) => { const r=await fetchAuth(`${API}/api/admin/alerts?page=${page}`); return r.json(); },
     renderRow: (a) => `<tr><td>${a.id}</td><td>${a.case_id}</td><td>${['','🟡黄','🟠橙','🔴红'][a.alert_level]||'?'}</td><td>${a.rule_type}</td><td>${a.channel_count}渠道</td><td>${a.is_pushed?'✅已推送':'⏳未推送'}</td></tr>`,
   },
   persons: {
     title: '人员档案', search: false,
-    load: async (page) => { const t=document.getElementById('personType')?.value||''; const r=await fetch(`${API}/api/admin/persons?page=${page}&person_type=${t}`); return r.json(); },
+    load: async (page) => { const t=document.getElementById('personType')?.value||''; const r=await fetchAuth(`${API}/api/admin/persons?page=${page}&person_type=${t}`); return r.json(); },
     renderRow: (p) => `<tr><td>${p.id}</td><td>${p.name}</td><td>${p.person_type}</td><td>${['','低','中','高'][p.risk_level]||'?'}风险</td><td>${p.district||''}</td><td><span class="act-btn act-edit" onclick="editPerson(${p.id})">编辑</span><span class="act-btn act-del" onclick="delPerson(${p.id})">删除</span></td></tr>`,
     searchHTML: `<input id="personType" placeholder="人员类型"><button onclick="refreshTab()">搜索</button><button class="btn-sm" onclick="showPersonForm()">+ 新增人员</button>`,
   },
   audit: {
     title: '审计日志', search: false,
-    load: async (page) => { const r=await fetch(`${API}/api/admin/audit?page=${page}`); return r.json(); },
+    load: async (page) => { const r=await fetchAuth(`${API}/api/admin/audit?page=${page}`); return r.json(); },
     renderRow: (l) => `<tr><td>${l.id}</td><td>${l.target_type}</td><td>${l.target_id}</td><td>${l.action}</td><td>${l.operator}</td><td>${(l.created_at||'').slice(0,19)}</td></tr>`,
   },
 };
@@ -212,7 +267,7 @@ async function showCaseForm(data=null) {
 }
 
 async function editCase(id) {
-  const r = await fetch(`${API}/api/admin/cases/${id}`); showCaseForm(await r.json());
+  const r = await fetchAuth(`${API}/api/admin/cases/${id}`); showCaseForm(await r.json());
 }
 
 async function saveCase(id) {
@@ -220,13 +275,13 @@ async function saveCase(id) {
   const data = Object.fromEntries(new FormData(form));
   const url = id ? `${API}/api/admin/cases/${id}` : `${API}/api/admin/cases`;
   const method = id ? 'PUT' : 'POST';
-  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  await fetchAuth(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
   closeModal(); refreshTab();
 }
 
 async function delCase(id) {
   if (!confirm('确认删除？')) return;
-  await fetch(`${API}/api/admin/cases/${id}`, { method: 'DELETE' });
+  await fetchAuth(`${API}/api/admin/cases/${id}`, { method: 'DELETE' });
   refreshTab();
 }
 
@@ -251,7 +306,7 @@ async function showPersonForm(data=null) {
 }
 
 async function editPerson(id) {
-  const r = await fetch(`${API}/api/admin/persons?page=1`);
+  const r = await fetchAuth(`${API}/api/admin/persons?page=1`);
   const data = await r.json();
   const p = data.rows.find(x => x.id == id);
   if (p) showPersonForm(p);
@@ -262,13 +317,13 @@ async function savePerson(id) {
   const data = Object.fromEntries(new FormData(form));
   const url = id ? `${API}/api/admin/persons/${id}` : `${API}/api/admin/persons`;
   const method = id ? 'PUT' : 'POST';
-  await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  await fetchAuth(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
   closeModal(); refreshTab();
 }
 
 async function delPerson(id) {
   if (!confirm('确认删除？关联随访记录将一并删除。')) return;
-  await fetch(`${API}/api/admin/persons/${id}`, { method: 'DELETE' });
+  await fetchAuth(`${API}/api/admin/persons/${id}`, { method: 'DELETE' });
   refreshTab();
 }
 

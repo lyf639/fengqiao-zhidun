@@ -192,7 +192,23 @@ class AuditLog(Base):
 
 
 # ============================================================
-# 8. 分类映射表 (category_mappings)
+# 8. 系统用户表 (users)
+# ============================================================
+class User(Base):
+    __tablename__ = 'users'
+
+    id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    username         = mapped_column(String(50), nullable=False, unique=True, index=True, comment='用户名')
+    password_hash    = mapped_column(String(200), nullable=False, comment='bcrypt 密码哈希')
+    display_name     = mapped_column(String(50), default='', comment='显示名称')
+    role             = mapped_column(String(20), default='admin', comment='角色: admin/operator/viewer')
+    is_active        = mapped_column(Integer, default=1, comment='是否启用')
+    last_login       = mapped_column(DateTime, nullable=True)
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+
+# ============================================================
+# 9. 分类映射表 (category_mappings)
 # 不同上游系统的分类叫法不同 → 统一映射到标准分类
 # ============================================================
 class CategoryMapping(Base):
