@@ -21,6 +21,7 @@ from models import (
     Policy, AuditLog, CategoryMapping, CaseTag, CaseTagRelation,
     get_session, init_db,
 )
+from ai_service import semantic_similarity
 
 # ==================== App ====================
 app = FastAPI(
@@ -283,17 +284,36 @@ def run_dedup(req: DedupRequest):
             ).limit(5).all()
 
             if matches:
-                scores = {'phone': 35, 'address': 28, 'semantic': 18, 'name': 8}
-                total = sum(scores.values())
+                # 使用 AI 计算语义相似度（自动回退到规则匹配）
+                new_dict = {
+                    'parties': new_case.parties or '',
+                    'district': new_case.district or '',
+                    'dispute_type': new_case.dispute_type or '',
+                    'description': new_case.description or '',
+                }
                 for m in matches:
+                    match_dict = {
+                        'parties': m.parties or '',
+                        'district': m.district or '',
+                        'dispute_type': m.dispute_type or '',
+                        'description': m.description or '',
+                    }
+                    ai_result = semantic_similarity(new_dict, match_dict)
+                    score_semantic = ai_result['score']
+                    scores = {'phone': 35, 'address': 28, 'semantic': score_semantic, 'name': 8}
+                    total = sum(scores.values())
                     session.add(DedupRecord(
                         case_id=cid, matched_case_id=m.id,
                         score_phone=scores['phone'], score_address=scores['address'],
-                        score_semantic=scores['semantic'], score_name=scores['name'],
+                        score_semantic=score_semantic, score_name=scores['name'],
                         total_score=total,
                     ))
                 session.query(Case).filter(Case.id == cid).update({'dedup_status': 2})
-                result = {'case_id': cid, 'match_count': len(matches), 'total_score': total}
+                result = {
+                    'case_id': cid, 'match_count': len(matches), 'total_score': total,
+                    'ai_backend': ai_result.get('backend', 'mock'),
+                    'ai_reason': ai_result.get('reason', ''),
+                }
                 dup_results.append(result); total_dup += 1
                 r.setex(cache_key, 3600, json.dumps(result))
             else:

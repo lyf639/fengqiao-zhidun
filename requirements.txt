@@ -6,3 +6,4 @@ mysql-connector-python==9.7.0
 fakeredis==2.36.2
 redis==5.2.1
 xlrd==2.0.2
+requests==2.32.3
