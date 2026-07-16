@@ -1,4 +1,4 @@
-﻿// 枫桥智盾 · 四步Demo流程
+// 枫桥智盾 · 四步Demo流程
 // ======================
 // 负责：Excel导入→智能去重→风险预警→处置跟进 完整闭环
 // 依赖：SheetJS（Excel解析）、cockpit.js（API_BASE、enterDemo/backToCockpit）
