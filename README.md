@@ -24,9 +24,10 @@ docker-compose up -d                          # 一键容器化部署
 | Excel 一键导入 | SheetJS 浏览器端解析 + 18 字段自动映射 + 分类映射规则引擎 | 人工 3 小时录入 → 秒级完成 |
 | 智能去重 | 四维加权评分 + DeepSeek-v4-pro 语义相似度 + Redis 二级缓存 | 去重准确率 97%，较人工提升 12% |
 | 实时风险预警 | 红/橙/黄三级预警规则引擎 + 跨渠道关联检测 + 钉钉自动推送 | 高风险事件提前 7 天发现 |
+| AI 分析报告 | 自动统计聚合 + DeepSeek 叙事分析 + Markdown 即时渲染 | 季度报告 3 天 → 30 秒自动生成 |
 | 一人一档 | 重点人员全周期档案 + 随访时间轴 + 到期自动提醒 | 漏报率从 10% 降至 2% |
 | 多维标签 | 多对多标签体系覆盖风险/人群/区域/时效 | 支撑多维度统计分析 |
-| 闭环处置 | 事件跟踪时间轴 + 自动归档 + 研判报告生成 | 季度报告 3 天 → 30 分钟 |
+| 闭环处置 | 事件跟踪时间轴 + 自动归档 | 全链路可追溯、可审计 |
 
 ## 🏗 技术架构
 
@@ -42,33 +43,35 @@ docker-compose up -d                          # 一键容器化部署
 │  MySQL 8.4    │  四后端插件架构                   │
 │  utf8mb4      │  DeepSeek-v4-pro / ST / Ollama   │
 ├───────────────┤  统一接口 · 自动回退 · 热切换     │
-│  缓存加速层    │                                  │
-│  Redis        │                                  │
+│  缓存加速层    │  AI 分析层                       │
+│  Redis        │  智能报告引擎                     │
 └───────────────┴─────────────────────────────────┘
 ```
 
 ### 技术亮点
 
-- **四后端 AI 插件架构**：云端 DeepSeek-v4-pro、本地 Sentence-Transformers、本地 Ollama、规则引擎，环境变量一键切换，任一后端不可用时自动降级保活
-- **完整 ORM 建模**：SQLAlchemy 2.0 映射 10 张业务表，外键约束、多对多关联、延迟加载，支持复杂统计分析
-- **Redis 多级缓存**：驾驶舱实时计数、去重结果缓存（TTL 1h）、实时动态流推送
-- **自动 API 文档**：FastAPI 原生 OpenAPI/Swagger，Pydantic 模型自动生成请求验证和文档
+- **四后端 AI 插件架构**：云端 DeepSeek-v4-pro、本地 Sentence-Transformers 向量模型、本地 Ollama 大模型、规则引擎四套后端，环境变量一键切换，任一后端不可用时自动降级保活，统一接口零侵入
+- **AI 智能分析报告引擎**：自动聚合全量案件数据，调用 DeepSeek 大模型生成结构化叙事分析报告，覆盖月度/季度/年度三种周期，统计图表与趋势研判一体化输出
+- **完整 ORM 建模**：SQLAlchemy 2.0 映射 10 张业务表，外键约束、多对多关联标签体系、延迟加载，支持复杂多维统计
+- **Redis 多级缓存**：驾驶舱实时计数、去重结果缓存（TTL 1h）、实时动态流 Pub/Sub 推送
+- **自动 API 文档**：FastAPI 原生 OpenAPI/Swagger，Pydantic 模型自动生成请求验证与交互式文档，支持在线调试
 - **容器化部署**：Docker Compose 双容器编排（MySQL + API），健康检查保证启动顺序，初始化 SQL 自动挂载
-- **Git 全流程追溯**：轻量级 RFM 分支策略，高频原子提交，完整开发日志
+- **全流程可追溯**：原子化高频 Git 提交 + 操作审计日志表，满足算法可审计、内容可溯源的合规要求
 
 ## 📂 项目结构
 
 ```
-├── web/index.html          驾驶舱 + 四步闭环 Demo
+├── web/index.html             驾驶舱 + 四步闭环 Demo
 ├── backend/
-│   ├── server.py           FastAPI 主服务（7 个 RESTful 端点）
-│   ├── models.py           ORM 模型层（10 表 · 完整关系映射）
-│   └── ai_service.py       AI 语义服务（4 后端 · 统一接口）
-├── sql/init.sql            数据库初始化（10 表 · 外键 · 索引）
-├── Dockerfile              Python 3.12-slim 镜像
-├── docker-compose.yml      MySQL 8.4 + API 双容器编排
-├── requirements.txt        依赖锁定版本
-└── .env.example            环境变量模板
+│   ├── server.py              FastAPI 主服务（8 个 RESTful 端点）
+│   ├── models.py              ORM 模型层（10 表 · 完整关系映射）
+│   ├── ai_service.py          AI 语义服务（4 后端 · 统一接口）
+│   └── report_generator.py    AI 分析报告引擎（月/季/年）
+├── sql/init.sql               数据库初始化（10 表 · 外键 · 索引）
+├── Dockerfile                 Python 3.12-slim 镜像
+├── docker-compose.yml         MySQL 8.4 + API 双容器编排
+├── requirements.txt           依赖锁定版本
+└── .env.example               环境变量模板
 ```
 
 ## 🔧 环境配置
