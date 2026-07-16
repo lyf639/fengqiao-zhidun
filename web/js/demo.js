@@ -34,6 +34,17 @@ function showStep(n) {
 let importedData = [];
 let importBatch = '';
 let importedCaseIds = [];
+
+// 延迟初始化拖拽区，确保 DOM 完全就绪
+window.addEventListener('DOMContentLoaded', () => {
+  const zone = document.getElementById('uploadZone');
+  if (!zone) { console.error('uploadZone not found'); return; }
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) { document.getElementById('fileInput').files = e.dataTransfer.files; handleFile({ target: { files: [f] } }); } });
+  console.log('uploadZone ready');
+});
+
 const COLUMN_MAP = {
   '案件编码': 'caseCode','案件编号': 'caseCode','协议类型': 'agreementType','案件来源': 'caseSource',
   '调解组织': 'mediationOrg','工作室': 'studio','受理人姓名': 'handler','受理人': 'handler',
@@ -78,11 +89,6 @@ function processImport(raw) {
   document.getElementById('dataTable').querySelector('thead').innerHTML = '<tr>' + cols.map(c => `<th>${displayHeaders[c] || mapping[c] || c}</th>`).join('') + '</tr>';
   document.getElementById('dataTable').querySelector('tbody').innerHTML = importedData.slice(0, 10).map(r => '<tr>' + cols.map(c => `<td>${r[c] || ''}</td>`).join('') + '</tr>').join('');
 }
-
-const zone = document.getElementById('uploadZone');
-zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) { document.getElementById('fileInput').files = e.dataTransfer.files; handleFile({ target: { files: [f] } }); } });
 
 // ===== 第二步：智能去重 =====
 // ① POST /api/import 写入MySQL
