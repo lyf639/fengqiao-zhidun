@@ -59,6 +59,9 @@ from tasks import start_worker, enqueue, get_status as task_status
 from db_router import get_status as db_status
 from cache_guard import cache_get_or_set, cache_stats as guard_stats
 from cache_guard import _jitter as ttl_jitter
+from metrics import get_metrics_response, MetricsMiddleware, start_metrics_updater
+from metrics import cases_total, alerts_total, dedup_total, ai_call_total, import_histogram
+from rate_limiter import rate_limit
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -81,8 +84,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# ==================== Redis (fakeredis) ====================
+app.add_middleware(MetricsMiddleware)
 r = get_cache()
 
 
@@ -187,6 +189,7 @@ def startup():
     seed_default_user()
     seed_rbac()
     start_worker()
+    start_metrics_updater()
     print('枫桥智盾 FastAPI 已启动')
     print('Swagger 文档: http://localhost:5000/docs')
     print('ReDoc 文档:  http://localhost:5000/redoc')
@@ -246,6 +249,7 @@ def list_cases(limit: int = 50):
 # ==================== Import ====================
 
 @app.post('/api/import', tags=['导入'])
+@rate_limit('import')
 def import_cases(req: ImportRequest):
     """
     Excel 一键导入
@@ -485,6 +489,7 @@ def generate_ai_report(req: ReportRequest):
 # ==================== Admin API ====================
 
 @app.post('/api/auth/login', tags=['认证'])
+@rate_limit('strict')
 def api_login(data: dict):
     """管理员登录，返回 JWT Token"""
     return auth_login(data.get('username', ''), data.get('password', ''))
@@ -659,6 +664,13 @@ def admin_tenants(request: Request):
 def cluster_status():
     """返回数据库集群 + API 节点 + 缓存防护状态"""
     return {'database': db_status(), 'cache': guard_stats(), 'api_nodes': 1, 'api_port': 5000}
+
+@app.get('/metrics', tags=['监控'])
+def metrics():
+    """Prometheus 指标采集端点"""
+    from fastapi.responses import Response
+    body, content_type = get_metrics_response()
+    return Response(content=body, media_type=content_type)
 
 @app.post('/api/tasks/dedup', tags=['异步任务'])
 def async_dedup(data: dict):

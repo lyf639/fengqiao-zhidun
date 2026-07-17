@@ -140,6 +140,8 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **全流程可追溯**：`audit_logs` 审计日志表以 JSON 格式记录每一次操作（导入/去重/预警/CRUD）的详细信息，配合 30+ 次高频原子化 Git 提交，满足算法可审计、内容可溯源的合规红线要求。
 
+- **Prometheus 监控 + 流量控制**：`metrics.py` 暴露 `/metrics` 端点，覆盖业务指标（案件/去重/预警/AI 调用次数、导入耗时）、HTTP 指标（请求计数+延时 Histogram）、系统指标（任务队列长度）。`rate_limiter.py` 基于 Redis 令牌桶实现分布式限流，预置 strict(30/min)/normal(100/min)/import(10/min)/ai(5/min) 四档策略，超限自动返回 429 + Retry-After 头。
+
 - **模块化前端架构**：CSS 独立为 `style.css`（281 行），JavaScript 按职责拆分为 `cockpit.js`（驾驶舱）和 `demo.js`（四步流程），HTML 精简为 302 行纯结构骨架。代码注释覆盖率超过 90%，每个模块顶部均有职责说明和调用关系图。
 
 ## 🌐 部署架构
