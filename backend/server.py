@@ -62,6 +62,7 @@ from cache_guard import _jitter as ttl_jitter
 from metrics import get_metrics_response, MetricsMiddleware, start_metrics_updater
 from metrics import cases_total, alerts_total, dedup_total, ai_call_total, import_histogram
 from rate_limiter import rate_limit
+from circuit_breaker import all_status as breaker_status
 from websocket import register as ws_register, start_feed_poller
 from grpc_client import ai_health
 from report_generator import generate_report
@@ -670,6 +671,7 @@ def cluster_status():
         'database': db_status(),
         'cache': guard_stats(),
         'ai_service': ai_health(),
+        'circuit_breakers': breaker_status(),
         'api_nodes': 1,
         'api_port': 5000,
     }
