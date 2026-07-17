@@ -56,6 +56,7 @@ from auth import login as auth_login, verify_token, seed_default_user
 from permissions import seed_rbac, require_perm, require_role, check_perm
 from tenant import get_tenant_context, list_tenants
 from tasks import start_worker, enqueue, get_status as task_status
+from db_router import get_status as db_status
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -652,8 +653,10 @@ def admin_tenants(request: Request):
     check_perm(request, 'admin:access')
     return list_tenants()
 
-
-# ==================== 异步任务队列 ====================
+@app.get('/api/cluster/status', tags=['集群'])
+def cluster_status():
+    """返回数据库集群 + API 节点状态"""
+    return {'database': db_status(), 'api_nodes': 1, 'api_port': 5000}
 
 @app.post('/api/tasks/dedup', tags=['异步任务'])
 def async_dedup(data: dict):

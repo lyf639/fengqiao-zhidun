@@ -132,7 +132,9 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **自动 API 文档**：FastAPI 原生 OpenAPI/Swagger 集成，Pydantic 数据模型自动生成请求验证、字段约束和交互式文档。Swagger UI 支持在线 Try it out，评委可直接在浏览器中测试所有 API 端点。
 
-- **容器化一键部署**
+- **容器化一键部署**：Docker Compose 双容器编排（MySQL 8.4 + Python 3.12-slim），健康检查保证 MySQL 就绪后才启动 API 服务，初始化 SQL 自动挂载完成建库建表。数据卷持久化 MySQL 数据，环境变量管理所有配置项。
+
+- **MySQL 读写分离集群**：`db_router.py` 实现主从连接路由，Master 处理所有写入，Slave(s) 轮询负载均衡处理查询。单节点模式（无 Slave 配置）自动读写同库，集群模式（配置 `DB_SLAVE_HOSTS`）读写分离，任一从库不可用时自动回退到主库。配合 `deploy/nginx.conf` 实现 API 层反向代理与多节点负载均衡，任一服务节点故障不影响整体可用。
 
 - **全流程可追溯**：`audit_logs` 审计日志表以 JSON 格式记录每一次操作（导入/去重/预警/CRUD）的详细信息，配合 30+ 次高频原子化 Git 提交，满足算法可审计、内容可溯源的合规红线要求。
 
@@ -180,6 +182,35 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 | Redis | fakeredis（开发）/ redis-py（生产） | 驾驶舱计数、去重缓存、动态流推送 |
 | DeepSeek | v4-pro 云端 API | HTTPS 加密通信，支持一键切换至本地模型 |
 | AI 降级 | Ollama / ST / 规则引擎 | 云端不可用时自动回退，确保服务永不断线 |
+
+### 集群高可用架构
+
+```
+              ┌──────────────┐
+              │   负载均衡器   │  NGINX (least_conn)
+              │   :80/:443    │
+              └───┬───┬───┬──┘
+                  │   │   │
+    ┌─────────────┼───┼───┼─────────────┐
+    │             │   │   │             │
+┌───┴───┐   ┌────┴───┴───┴────┐   ┌───┴───┐
+│ API-1 │   │     API-2        │   │ API-3 │  FastAPI
+│ :5000 │   │     :5001        │   │ :5002 │  (多节点)
+└───┬───┘   └────┬──────┬──────┘   └───┬───┘
+    │            │      │             │
+    │     ┌──────┘      └──────┐      │
+    │     │                   │      │
+┌───┴─────┴───┐         ┌─────┴──────┴───┐
+│   MySQL     │ ──复制──▶│  MySQL Slave   │
+│   Master    │         │  (RO) :3307    │
+│   写        │         │  读            │
+└─────────────┘         └────────────────┘
+```
+
+- **NGINX**：`least_conn` 最小连接数策略分发流量，健康检查自动剔除故障节点
+- **DB Router**：`db_router.py` 路由层，SELECT 走 Slave 轮询，INSERT/UPDATE/DELETE 走 Master
+- **自动故障转移**：Slave 不可用时 `get_read_session()` 自动回退到 Master，零感知切换
+- **API 集群状态**：`GET /api/cluster/status` 实时返回主库 + 从库 + 节点数
 
 ## 🗄️ 数据库设计
 

@@ -360,6 +360,7 @@ Case.tags = relationship('CaseTag', secondary='case_tag_relations', back_populat
 # ============================================================
 import os
 from urllib.parse import quote_plus
+from db_router import get_master_session, get_slave_session, get_master_engine
 
 DB_HOST = os.getenv('DB_HOST', 'localhost')
 DB_PORT = os.getenv('DB_PORT', '3306')
@@ -367,6 +368,7 @@ DB_USER = os.getenv('DB_USER', 'root')
 DB_PASSWORD = os.getenv('DB_PASSWORD', 'FengQiao@2026')
 DB_NAME = os.getenv('DB_NAME', 'fengqiao_zhidun')
 
+# 旧连接 URL（Docker 兼容，保留不删）
 DATABASE_URL = f'mysql+pymysql://{DB_USER}:{quote_plus(DB_PASSWORD)}@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4'
 
 engine = create_engine(
@@ -381,10 +383,20 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
 def get_session():
-    """获取数据库会话"""
-    return SessionLocal()
+    """获取写库会话（向后兼容，默认走 Master）"""
+    return get_master_session()
+
+
+def get_read_session():
+    """获取读库会话（Slave 负载均衡，无 Slave 时回退 Master）"""
+    return get_slave_session()
+
+
+def get_write_session():
+    """获取写库会话"""
+    return get_master_session()
 
 
 def init_db():
-    """建表（仅首次运行，表已存在则跳过）"""
-    Base.metadata.create_all(engine)
+    """建表（仅首次运行，表已存在则跳过）使用 Master 引擎"""
+    Base.metadata.create_all(get_master_engine())
