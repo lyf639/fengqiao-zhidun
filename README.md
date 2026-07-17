@@ -181,11 +181,12 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 ## 🗄️ 数据库设计
 
-11 张数据表，完整外键约束与索引优化：
+14 张数据表，完整外键约束与索引优化：
 
 | 表名 | 说明 | 关键字段 |
 |------|------|---------|
-| cases | 案件主表 | 18 列原始字段 + 去重/预警/处置状态 |
+| tenants | 多租户 - 乡镇/街道 | 名称/编码/所属区县 |
+| cases | 案件主表 | 18 列原始字段 + tenant_id + 去重/预警/处置状态 |
 | dedup_records | 去重比对记录 | 四维得分明细 + 人工确认 |
 | alert_events | 预警事件 | 等级/规则/渠道/推送状态 |
 | person_profiles | 重点人员档案 | 类型/风险等级/涉管部门 |
@@ -275,6 +276,29 @@ DB_NAME=fengqiao_zhidun
 **14 个权限码**覆盖 6 大资源：`cases:read|write|delete`、`persons:read|write|delete`、`alerts:read|manage`、`dedup:read|manage`、`audit:read`、`report:generate`、`admin:access`、`users:manage`。
 
 所有管理 API 路由通过 `check_perm(request, 'perm_code')` 行内校验，JWT Token 中携带 `role` 字段，后端根据角色映射动态判定权限，无权限操作直接返回 403。
+
+### 多租户数据隔离
+
+乡镇（街道）级多租户架构，每个乡镇为独立数据空间：
+
+- **租户表** (`tenants`)：存储乡镇名称、编码、所属区县，系统预置枸杞乡、嵊山镇等
+- **数据绑定**：`cases`、`person_profiles`、`users` 三表含 `tenant_id` 外键，创建时自动注入当前租户
+- **查询隔离**：所有管理 API 通过 `get_tenant_context(request)` 提取 JWT 中的租户上下文，SQLAlchemy Query 自动追加 `WHERE tenant_id = ?` 过滤
+- **超级管理员**（`tenant_id=NULL`）可跨租户查看全部数据，乡镇管理员/操作员仅看到本乡镇数据
+- **JWT Token** 内嵌 `tenant_id`、`tenant_code`、`tenant_name` 三个字段，前端可据此动态切换工作乡镇
+
+```
+          ┌──────────────────────────────────────┐
+          │         超级管理员（跨租户）           │
+          │         tenant_id = NULL             │
+          └──────────┬───────────┬───────────────┘
+                     │           │
+    ┌────────────────┴───┐   ┌───┴────────────────┐
+    │  枸杞乡（tenant=1） │   │ 嵊山镇（tenant=2）  │
+    │  案件 · 人员 · 预警  │   │ 案件 · 人员 · 预警   │
+    │  管理员/操作员/观察员 │   │ 管理员/操作员/观察员  │
+    └────────────────────┘   └────────────────────┘
+```
 
 ### 合规审计
 
