@@ -5,10 +5,15 @@
 ## 🚀 快速启动
 
 ```bash
-# 本地开发
+# 本地开发（启动 AI 微服务 + 主服务）
 pip install -r requirements.txt
-python backend/server.py                     # API 服务 → http://localhost:5000
-python -m http.server 3000 -d web             # 驾驶舱   → http://localhost:3000
+python backend/ai_server.py                   # AI 微服务 → gRPC :50051
+python backend/server.py                      # API 服务 → http://localhost:5000
+
+# 生产部署
+cp deploy/nginx.conf /etc/nginx/conf.d/fengqiao.conf
+cp deploy/supervisor.conf /etc/supervisor/conf.d/
+supervisorctl reread && supervisorctl update
 
 # Docker 一键部署
 docker-compose up -d                          # MySQL + API + 前端
@@ -23,7 +28,7 @@ docker-compose up -d                          # MySQL + API + 前端
 
 ### 数据库初始化
 
-确保 MySQL 8.4 服务已启动，创建数据库并导入（项目附带的数据库导出文件 `sql/fengqiao_zhidun_export.sql` 包含 11 张表结构与 42 条演示数据）：
+确保 MySQL 8.4 服务已启动，创建数据库并导入（项目附带的数据库导出文件 `sql/fengqiao_zhidun_export.sql` 包含 16 张表结构与 42 条演示数据）：
 
 ```bash
 # 1. 创建数据库
@@ -33,7 +38,7 @@ mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS fengqiao_zhidun DEFAULT CHARA
 mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 ```
 
-导入后默认管理员账号 **admin / admin** 即可登录后台管理系统。
+导入后默认管理员账号 **admin / admin123** 即可登录后台管理系统。
 
 ## 🧠 核心能力
 
@@ -84,7 +89,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 ### 后台管理系统
 
-集成管理界面，支持案件、人员、预警事件、去重记录、审计日志五大模块的搜索、分页、新增、编辑、删除操作。基于 JWT Token + bcrypt 密码哈希的认证体系，默认管理员账号 admin / admin，所有管理 API 受 Bearer Token 保护。
+集成管理界面，支持案件、人员、预警事件、去重记录、审计日志五大模块的搜索、分页、新增、编辑、删除操作。基于 JWT Token + bcrypt 密码哈希的认证体系，四级 RBAC 权限模型，默认超级管理员 admin / admin123，所有管理 API 受 Bearer Token 保护。
 
 ### 分类映射引擎
 
@@ -102,7 +107,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 │  服务网关层    FastAPI + Pydantic + Swagger      │
 │              29+ RESTful 端点 · 自动文档生成     │
 ├─────────────────────────────────────────────────┤
-│  业务逻辑层    SQLAlchemy 2.0 ORM · 16 张数据表   │
+│  业务逻辑层    SQLAlchemy 2.0 ORM · 15 张数据表   │
 │              外键约束 · 多对多关联 · 延迟加载     │
 ├───────────────┬─────────────────────────────────┤
 │  数据存储层    │  AI 微服务层 (gRPC :50051)      │
@@ -122,7 +127,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **逐字段动态去重评分**：四维加权模型（电话 40 + 地址 30 + 语义 20 + 姓名 10）的每个维度均基于实际字段比对结果动态计算，拒绝硬编码满分。电话提取数字后比对后 8/6/4 位分级给分，地址标准化后精确匹配，姓名基于交集数量计算。
 
-- **完整 ORM 建模**：SQLAlchemy 2.0 映射 11 张业务表，涵盖案件主表、去重记录、预警事件、人员档案、随访记录、政策库、审计日志、系统用户、分类映射、案件标签及多对多关联表。外键约束保障数据完整性，延迟加载优化查询性能，支持复杂多维统计查询。
+- **完整 ORM 建模**：SQLAlchemy 2.0 映射 15 张业务表，涵盖租户表、案件主表、去重记录、预警事件、人员档案、随访记录、政策库、审计日志、系统用户、RBAC 三表（roles/permissions/role_permissions）、分类映射、案件标签及多对多关联表。外键约束保障数据完整性，延迟加载优化查询性能，支持复杂多维统计查询。
 
 - **Redis 多级缓存**：驾驶舱实时计数器（Hash）、去重结果缓存（String，TTL 1h）、实时动态流消息队列（List，保留最近 50 条）。演示环境使用 fakeredis 零依赖运行，生产环境切换 redis-py 仅需一行配置。
 
@@ -264,7 +269,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 ## 🗄️ 数据库设计
 
-14 张数据表，完整外键约束与索引优化：
+15 张数据表，完整外键约束与索引优化：
 
 | 表名 | 说明 | 关键字段 |
 |------|------|---------|
@@ -289,21 +294,38 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 ## 📂 项目结构
 
 ```
+├── proto/
+│   └── fengqiao.proto         gRPC 服务定义（AI 微服务接口）
 ├── web/
-│   ├── index.html             驾驶舱 + 四步闭环 Demo（302 行）
+│   ├── index.html             驾驶舱 + 四步闭环 Demo
 │   ├── admin.html             后台管理系统（CRUD 全表 + JWT 登录）
-│   ├── css/style.css          全局样式（281 行）
+│   ├── css/style.css          全局样式
 │   └── js/
-│       ├── cockpit.js         驾驶舱逻辑（时钟/图表/动态流/报告）
+│       ├── cockpit.js         驾驶舱逻辑 + WebSocket 实时推送
 │       └── demo.js            四步流程（导入/去重/预警/跟进）
 ├── backend/
-│   ├── server.py              FastAPI 主服务（24+ RESTful 端点）
-│   ├── models.py              ORM 模型层（11 表 · 完整关系映射）
+│   ├── server.py              FastAPI 主服务（29+ RESTful / gRPC 客户端 / WebSocket）
+│   ├── ai_server.py           AI 微服务（gRPC :50051 · 去重/报告/语义）
+│   ├── models.py              ORM 模型层（17 表 · 完整关系映射）
 │   ├── ai_service.py          AI 语义服务（4 后端 · 自动降级）
 │   ├── report_generator.py    AI 分析报告引擎（三级降级）
 │   ├── admin_api.py           后台管理 CRUD 逻辑层
-│   └── auth.py                JWT 认证模块（签发/验证/种子用户）
-├── sql/init.sql               数据库初始化（11 表 · 外键 · 索引）
+│   ├── auth.py                JWT 认证模块
+│   ├── permissions.py         RBAC 权限体系
+│   ├── tenant.py              多租户中间件
+│   ├── db_router.py           MySQL 读写分离路由
+│   ├── cache_guard.py         缓存三层防护（穿透/击穿/雪崩）
+│   ├── circuit_breaker.py     熔断器（gRPC/API 调用保护）
+│   ├── grpc_client.py         gRPC 客户端（自动回退）
+│   ├── metrics.py             Prometheus 监控指标
+│   ├── rate_limiter.py        Redis 令牌桶限流器
+│   ├── tasks.py               Redis 异步任务队列
+│   ├── websocket.py           WebSocket 实时推送
+│   └── redis_adapter.py       Redis 连接适配器
+├── deploy/
+│   ├── nginx.conf             NGINX 负载均衡 + 反向代理
+│   └── supervisor.conf        进程守护（自动重启）
+├── sql/init.sql               数据库初始化（17 表 · 外键 · 索引）
 ├── Dockerfile                 Python 3.12-slim 镜像
 ├── docker-compose.yml         MySQL 8.4 + API 双容器编排
 ├── requirements.txt           依赖锁定版本
