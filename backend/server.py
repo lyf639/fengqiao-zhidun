@@ -57,6 +57,8 @@ from permissions import seed_rbac, require_perm, require_role, check_perm
 from tenant import get_tenant_context, list_tenants
 from tasks import start_worker, enqueue, get_status as task_status
 from db_router import get_status as db_status
+from cache_guard import cache_get_or_set, cache_stats as guard_stats
+from cache_guard import _jitter as ttl_jitter
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -372,10 +374,10 @@ def run_dedup(req: DedupRequest):
                     'ai_reason': ai_result.get('reason', ''),
                 }
                 dup_results.append(result); total_dup += 1
-                r.setex(cache_key, 3600, json.dumps(result))
+                r.setex(cache_key, ttl_jitter(3600), json.dumps(result))
             else:
                 session.query(Case).filter(Case.id == cid).update({'dedup_status': 1})
-                r.setex(cache_key, 3600, json.dumps({'case_id': cid, 'match_count': 0, 'total_score': 0}))
+                r.setex(cache_key, ttl_jitter(3600), json.dumps({'case_id': cid, 'match_count': 0, 'total_score': 0}))
 
         session.commit()
         r.hincrby('dashboard:dedup', 'value', total_dup)
@@ -655,8 +657,8 @@ def admin_tenants(request: Request):
 
 @app.get('/api/cluster/status', tags=['集群'])
 def cluster_status():
-    """返回数据库集群 + API 节点状态"""
-    return {'database': db_status(), 'api_nodes': 1, 'api_port': 5000}
+    """返回数据库集群 + API 节点 + 缓存防护状态"""
+    return {'database': db_status(), 'cache': guard_stats(), 'api_nodes': 1, 'api_port': 5000}
 
 @app.post('/api/tasks/dedup', tags=['异步任务'])
 def async_dedup(data: dict):

@@ -128,6 +128,8 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **Redis 异步任务队列**：基于 Redis List 的轻量级消息队列，将耗时操作（批量去重 AI 语义比对、报告生成）从同步阻塞改为异步提交 + 前端轮询。后台守护线程消费队列任务，实时更新进度百分比，不引入 RabbitMQ/Kafka 等重依赖。
 
+- **缓存三层防护**：`cache_guard.py` 实现穿透/击穿/雪崩三重防护——空值缓存防穿透（TTL 60s）、互斥锁防热点 key 击穿（同一 key 并发 miss 仅一个请求重建）、TTL ±20% 随机抖动防雪崩（分散过期时间点）。`GET /api/cluster/status` 实时返回缓存防护运行状态。
+
 - **JWT 认证与权限控制**：后台管理系统基于 JWT Token（HS256，24h 过期）+ bcrypt 密码哈希。API 层通过 `verify_token()` 中间件保护所有管理端点，Token 失效自动返回 401 并踢回登录页。用户表支持多角色（admin/operator/viewer）和账号启停。
 
 - **自动 API 文档**：FastAPI 原生 OpenAPI/Swagger 集成，Pydantic 数据模型自动生成请求验证、字段约束和交互式文档。Swagger UI 支持在线 Try it out，评委可直接在浏览器中测试所有 API 端点。
