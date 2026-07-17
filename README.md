@@ -126,11 +126,13 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **Redis 多级缓存**：驾驶舱实时计数器（Hash）、去重结果缓存（String，TTL 1h）、实时动态流消息队列（List，保留最近 50 条）。演示环境使用 fakeredis 零依赖运行，生产环境切换 redis-py 仅需一行配置。
 
+- **Redis 异步任务队列**：基于 Redis List 的轻量级消息队列，将耗时操作（批量去重 AI 语义比对、报告生成）从同步阻塞改为异步提交 + 前端轮询。后台守护线程消费队列任务，实时更新进度百分比，不引入 RabbitMQ/Kafka 等重依赖。
+
 - **JWT 认证与权限控制**：后台管理系统基于 JWT Token（HS256，24h 过期）+ bcrypt 密码哈希。API 层通过 `verify_token()` 中间件保护所有管理端点，Token 失效自动返回 401 并踢回登录页。用户表支持多角色（admin/operator/viewer）和账号启停。
 
 - **自动 API 文档**：FastAPI 原生 OpenAPI/Swagger 集成，Pydantic 数据模型自动生成请求验证、字段约束和交互式文档。Swagger UI 支持在线 Try it out，评委可直接在浏览器中测试所有 API 端点。
 
-- **容器化一键部署**：Docker Compose 双容器编排（MySQL 8.4 + Python 3.12-slim），健康检查保证 MySQL 就绪后才启动 API 服务，初始化 SQL 自动挂载完成建库建表。数据卷持久化 MySQL 数据，环境变量管理所有配置项。
+- **容器化一键部署**
 
 - **全流程可追溯**：`audit_logs` 审计日志表以 JSON 格式记录每一次操作（导入/去重/预警/CRUD）的详细信息，配合 30+ 次高频原子化 Git 提交，满足算法可审计、内容可溯源的合规红线要求。
 

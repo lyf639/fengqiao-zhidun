@@ -134,19 +134,46 @@ async function goToStep2() {
     importedCaseIds = (data2.cases || []).slice(0, importedData.length).map(c => c.id);
   } catch(e) { importedCaseIds = []; }
 
-  // 3. 执行去重比对
-  let dedupData = null;
+  // 3. 提交异步去重任务
+  let taskId = '';
   try {
-    const dedupResp = await fetch(API_BASE + '/api/dedup', {
+    const dedupResp = await fetch(API_BASE + '/api/tasks/dedup', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ batch: importBatch, case_ids: importedCaseIds })
     });
-    dedupData = await dedupResp.json();
-  } catch(e) {}
+    const taskData = await dedupResp.json();
+    taskId = taskData.task_id;
+  } catch(e) {
+    dedupLoading.innerHTML = '❌ 任务提交失败'; return;
+  }
 
-  // 4. 渲染去重结果
-  const checked = dedupData ? dedupData.checked : importedData.length;
-  const duplicates = dedupData ? dedupData.duplicates : 0;
+  // 4. 轮询任务进度
+  let dedupData = null;
+  for (let i = 0; i < 120; i++) {
+    await new Promise(r => setTimeout(r, 1000));
+    try {
+      const pollResp = await fetch(API_BASE + '/api/tasks/' + taskId);
+      const pollData = await pollResp.json();
+      dedupLoading.innerHTML = `🔄 去重比对中... ${pollData.progress || 0}%`;
+      if (pollData.status === 'done') {
+        dedupData = JSON.parse(pollData.result);
+        break;
+      }
+      if (pollData.status === 'failed') {
+        dedupLoading.innerHTML = '❌ 去重任务执行失败';
+        console.error(pollData.result);
+        return;
+      }
+    } catch(e) {}
+  }
+  if (!dedupData) {
+    dedupLoading.innerHTML = '⚠ 去重任务超时，请刷新页面查看结果';
+    return;
+  }
+
+  // 5. 渲染去重结果
+  const checked = dedupData.total;
+  const duplicates = dedupData.matches;
   document.getElementById('dedupTotal').textContent = checked;
   document.getElementById('dedupSuspect').textContent = duplicates;
   document.getElementById('dedupUnique').textContent = checked - duplicates;

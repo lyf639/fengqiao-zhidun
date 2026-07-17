@@ -37,7 +37,6 @@ from urllib.parse import quote_plus
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
-import fakeredis
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -45,6 +44,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from redis_adapter import get_cache
 
 from models import (
     Case, DedupRecord, AlertEvent, PersonProfile, FollowUpRecord,
@@ -55,6 +55,7 @@ from ai_service import semantic_similarity, field_scores
 from auth import login as auth_login, verify_token, seed_default_user
 from permissions import seed_rbac, require_perm, require_role, check_perm
 from tenant import get_tenant_context, list_tenants
+from tasks import start_worker, enqueue, get_status as task_status
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -79,7 +80,7 @@ app.add_middleware(
 )
 
 # ==================== Redis (fakeredis) ====================
-r = fakeredis.FakeRedis(decode_responses=True)
+r = get_cache()
 
 
 def init_cache():
@@ -182,6 +183,7 @@ def startup():
     init_cache()
     seed_default_user()
     seed_rbac()
+    start_worker()
     print('枫桥智盾 FastAPI 已启动')
     print('Swagger 文档: http://localhost:5000/docs')
     print('ReDoc 文档:  http://localhost:5000/redoc')
@@ -649,6 +651,32 @@ def admin_roles(request: Request):
 def admin_tenants(request: Request):
     check_perm(request, 'admin:access')
     return list_tenants()
+
+
+# ==================== 异步任务队列 ====================
+
+@app.post('/api/tasks/dedup', tags=['异步任务'])
+def async_dedup(data: dict):
+    """提交异步去重任务，返回 task_id 供前端轮询"""
+    if not data.get('batch') or not data.get('case_ids'):
+        raise HTTPException(400, '缺少 batch 或 case_ids')
+    task_id = enqueue('dedup_batch', {'batch': data['batch'], 'case_ids': data['case_ids']})
+    return {'task_id': task_id, 'status': 'pending'}
+
+@app.post('/api/tasks/report', tags=['异步任务'])
+def async_report(data: dict):
+    """提交异步报告生成任务"""
+    task_id = enqueue('generate_report', {
+        'report_type': data.get('report_type', 'monthly'),
+        'year': data.get('year'),
+        'period': data.get('period'),
+    })
+    return {'task_id': task_id, 'status': 'pending'}
+
+@app.get('/api/tasks/{task_id}', tags=['异步任务'])
+def poll_task(task_id: str):
+    """轮询任务状态"""
+    return task_status(task_id)
 
 
 # ==================== Static Frontend ====================
