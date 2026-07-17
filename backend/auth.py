@@ -87,7 +87,7 @@ def login(username: str, password: str) -> dict:
 
 
 def seed_default_user():
-    """创建默认管理员账号（仅当不存在时）"""
+    """创建默认超级管理员账号（仅当不存在时）"""
     session = get_session()
     try:
         existing = session.query(User).filter(User.username == 'admin').first()
@@ -95,13 +95,13 @@ def seed_default_user():
             user = User(
                 username='admin',
                 password_hash=hash_password('admin123'),
-                display_name='系统管理员',
-                role='admin',
+                display_name='系统超级管理员',
+                role='super_admin',
                 is_active=1,
             )
             session.add(user)
             session.commit()
-            print('已创建默认管理员：admin / admin123')
+            print('已创建默认超级管理员：admin / admin123')
     except Exception:
         session.rollback()
     finally:

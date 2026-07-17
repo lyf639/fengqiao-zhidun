@@ -231,6 +231,47 @@ class User(Base):
 
 
 # ============================================================
+# 8b. RBAC 角色表 (roles)
+# ============================================================
+class Role(Base):
+    __tablename__ = 'roles'
+
+    id               = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name             = mapped_column(String(30), nullable=False, unique=True, comment='角色标识: super_admin/admin/operator/viewer')
+    label            = mapped_column(String(50), nullable=False, comment='显示名称')
+    description      = mapped_column(String(200), default='')
+    is_system        = mapped_column(Integer, default=1, comment='系统内置角色不可删除')
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+    permissions = relationship('Permission', secondary='role_permissions', back_populates='roles')
+
+
+# ============================================================
+# 8c. 权限表 (permissions)
+# ============================================================
+class Permission(Base):
+    __tablename__ = 'permissions'
+
+    id               = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code             = mapped_column(String(50), nullable=False, unique=True, comment='权限码: cases:read')
+    name             = mapped_column(String(50), nullable=False, comment='权限名称')
+    resource         = mapped_column(String(30), nullable=False, comment='资源: cases/persons/alerts...')
+    action           = mapped_column(String(20), nullable=False, comment='操作: read/write/delete/manage')
+
+    roles = relationship('Role', secondary='role_permissions', back_populates='permissions')
+
+
+# ============================================================
+# 8d. 角色-权限关联表 (role_permissions)
+# ============================================================
+class RolePermission(Base):
+    __tablename__ = 'role_permissions'
+
+    role_id          = mapped_column(Integer, ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True)
+    permission_id    = mapped_column(Integer, ForeignKey('permissions.id', ondelete='CASCADE'), primary_key=True)
+
+
+# ============================================================
 # 9. 分类映射表 (category_mappings)
 # 不同上游系统的分类叫法不同 → 统一映射到标准分类
 # ============================================================

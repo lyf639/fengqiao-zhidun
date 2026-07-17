@@ -53,6 +53,7 @@ from models import (
 )
 from ai_service import semantic_similarity, field_scores
 from auth import login as auth_login, verify_token, seed_default_user
+from permissions import seed_rbac, require_perm, require_role, check_perm
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -179,6 +180,7 @@ def startup():
     init_db()
     init_cache()
     seed_default_user()
+    seed_rbac()
     print('枫桥智盾 FastAPI 已启动')
     print('Swagger 文档: http://localhost:5000/docs')
     print('ReDoc 文档:  http://localhost:5000/redoc')
@@ -484,91 +486,159 @@ def api_login(data: dict):
 
 @app.get('/api/admin/cases', tags=['管理后台'])
 def admin_cases(request: Request, page: int = 1, district: str = '', dispute_type: str = '', keyword: str = ''):
-    verify_token(request)
+    check_perm(request, 'cases:read')
     return admin_list_cases(page, 20, district, dispute_type, keyword)
 
 @app.get('/api/admin/cases/{case_id}', tags=['管理后台'])
 def admin_get_case(request: Request, case_id: int):
-    verify_token(request)
+    check_perm(request, 'cases:read')
     r = get_case(case_id)
     if not r: raise HTTPException(404, 'not found')
     return r
 
 @app.post('/api/admin/cases', tags=['管理后台'])
 def admin_create_case(request: Request, data: dict):
-    verify_token(request)
+    check_perm(request, 'cases:write')
     try: return create_case(data)
     except Exception as e: raise HTTPException(500, str(e))
 
 @app.put('/api/admin/cases/{case_id}', tags=['管理后台'])
 def admin_update_case(request: Request, case_id: int, data: dict):
-    verify_token(request)
+    check_perm(request, 'cases:write')
     r = update_case(case_id, data)
     if not r: raise HTTPException(404, 'not found')
     return r
 
 @app.delete('/api/admin/cases/{case_id}', tags=['管理后台'])
 def admin_delete_case(request: Request, case_id: int):
-    verify_token(request)
+    check_perm(request, 'cases:delete')
     delete_case(case_id)
     return {'success': True}
 
 @app.get('/api/admin/dedup', tags=['管理后台'])
 def admin_dedup(request: Request, page: int = 1):
-    verify_token(request)
+    check_perm(request, 'dedup:read')
     return list_dedup_records(page, 20)
 
 @app.get('/api/admin/alerts', tags=['管理后台'])
 def admin_alerts(request: Request, page: int = 1, level: int = None):
-    verify_token(request)
+    check_perm(request, 'alerts:read')
     return list_alerts(page, 20, level)
 
 @app.get('/api/admin/persons', tags=['管理后台'])
 def admin_persons(request: Request, page: int = 1, person_type: str = ''):
-    verify_token(request)
+    check_perm(request, 'persons:read')
     return list_persons(page, 20, person_type)
 
 @app.post('/api/admin/persons', tags=['管理后台'])
 def admin_create_person(request: Request, data: dict):
-    verify_token(request)
+    check_perm(request, 'persons:write')
     try: return create_person(data)
     except Exception as e: raise HTTPException(500, str(e))
 
 @app.put('/api/admin/persons/{person_id}', tags=['管理后台'])
 def admin_update_person(request: Request, person_id: int, data: dict):
-    verify_token(request)
+    check_perm(request, 'persons:write')
     r = update_person(person_id, data)
     if not r: raise HTTPException(404, 'not found')
     return r
 
 @app.get('/api/admin/persons/{person_id}', tags=['管理后台'])
 def admin_get_person(request: Request, person_id: int):
-    verify_token(request)
+    check_perm(request, 'persons:read')
     r = get_person(person_id)
     if not r: raise HTTPException(404, 'not found')
     return r
 
 @app.delete('/api/admin/persons/{person_id}', tags=['管理后台'])
 def admin_delete_person(request: Request, person_id: int):
-    verify_token(request)
+    check_perm(request, 'persons:delete')
     delete_person(person_id)
     return {'success': True}
 
 @app.get('/api/admin/followups', tags=['管理后台'])
 def admin_followups(request: Request, person_id: int = None, page: int = 1):
-    verify_token(request)
+    check_perm(request, 'persons:read')
     return list_followups(person_id, page, 20)
 
 @app.post('/api/admin/followups', tags=['管理后台'])
 def admin_create_followup(request: Request, data: dict):
-    verify_token(request)
+    check_perm(request, 'persons:write')
     try: return create_followup(data)
     except Exception as e: raise HTTPException(500, str(e))
 
 @app.get('/api/admin/audit', tags=['管理后台'])
 def admin_audit(request: Request, page: int = 1):
-    verify_token(request)
+    check_perm(request, 'audit:read')
     return list_audit_logs(page, 30)
+
+
+# ==================== 用户管理（仅超级管理员） ====================
+
+@app.get('/api/admin/users', tags=['管理后台'])
+def admin_users(request: Request):
+    check_perm(request, 'users:manage')
+    from models import User as UserModel
+    session = get_session()
+    try:
+        users = session.query(UserModel).all()
+        return [{'id': u.id, 'username': u.username, 'display_name': u.display_name,
+                 'role': u.role, 'is_active': u.is_active, 'last_login': str(u.last_login) if u.last_login else None}
+                for u in users]
+    finally:
+        session.close()
+
+@app.post('/api/admin/users', tags=['管理后台'])
+def admin_create_user(request: Request, data: dict):
+    check_perm(request, 'users:manage')
+    from models import User as UserModel
+    from auth import hash_password
+    session = get_session()
+    try:
+        if session.query(UserModel).filter(UserModel.username == data['username']).first():
+            raise HTTPException(400, '用户名已存在')
+        u = UserModel(username=data['username'], password_hash=hash_password(data['password']),
+                      display_name=data.get('display_name', ''), role=data.get('role', 'viewer'), is_active=1)
+        session.add(u)
+        session.commit()
+        return {'id': u.id, 'username': u.username}
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(500, str(e))
+    finally:
+        session.close()
+
+@app.put('/api/admin/users/{user_id}', tags=['管理后台'])
+def admin_update_user(request: Request, user_id: int, data: dict):
+    check_perm(request, 'users:manage')
+    from models import User as UserModel
+    from auth import hash_password
+    session = get_session()
+    try:
+        u = session.query(UserModel).get(user_id)
+        if not u: raise HTTPException(404, 'not found')
+        if 'role' in data: u.role = data['role']
+        if 'is_active' in data: u.is_active = data['is_active']
+        if 'display_name' in data: u.display_name = data['display_name']
+        if 'password' in data: u.password_hash = hash_password(data['password'])
+        session.commit()
+        return {'success': True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(500, str(e))
+    finally:
+        session.close()
+
+@app.get('/api/admin/roles', tags=['管理后台'])
+def admin_roles(request: Request):
+    check_perm(request, 'admin:access')
+    from permissions import ROLES, ROLE_PERMISSIONS
+    return {name: {'label': info['label'], 'permissions': ROLE_PERMISSIONS.get(name, [])}
+            for name, info in ROLES.items()}
 
 
 # ==================== Static Frontend ====================
