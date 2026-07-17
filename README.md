@@ -28,7 +28,7 @@ docker-compose up -d                          # MySQL + API + 前端
 
 ### 数据库初始化
 
-确保 MySQL 8.4 服务已启动，创建数据库并导入（项目附带的数据库导出文件 `sql/fengqiao_zhidun_export.sql` 包含 16 张表结构与 42 条演示数据）：
+确保 MySQL 8.4 服务已启动，创建数据库并导入（项目附带的数据库导出文件 `sql/fengqiao_zhidun_export.sql` 包含 15 张表结构与 42 条预置样本数据）：
 
 ```bash
 # 1. 创建数据库
@@ -121,7 +121,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 ### 技术亮点
 
-- **四后端 AI 插件架构 · 云+端热切换**：系统支持四种 AI 后端——云端 DeepSeek-v4-pro、本地 Ollama 运行 DeepSeek-R1 蒸馏模型、本地 Sentence-Transformers 向量模型、规则引擎兜底。通过环境变量 `AI_BACKEND` 一键热切换，**无需重启服务、无需修改代码**。本地 Ollama 模式下，矛盾纠纷数据（含当事人姓名、联系电话、家庭住址等敏感信息）完全在政务专网内处理，**数据不出域、不经过互联网传输**，从根本上满足政法系统对数据安全的红线要求。云端 API 模式下，享受 DeepSeek-v4-pro 671B 参数顶级大模型的推理能力。两者之间秒级切换，演示环境与生产环境无缝衔接。任一后端不可用时自动降级至下一级，确保服务永不断线。
+- **四后端 AI 插件架构 · 云+端热切换**：系统支持四种 AI 后端——云端 DeepSeek-v4-pro、本地 Ollama 运行 DeepSeek-R1 蒸馏模型、本地 Sentence-Transformers 向量模型、规则引擎兜底。通过环境变量 `AI_BACKEND` 一键热切换，**无需重启服务、无需修改代码**。本地 Ollama 模式下，矛盾纠纷数据（含当事人姓名、联系电话、家庭住址等敏感信息）完全在政务专网内处理，**数据不出域、不经过互联网传输**，从根本上满足政法系统对数据安全的红线要求。云端 API 模式下，享受 DeepSeek-v4-pro 671B 参数顶级大模型的推理能力。两者之间秒级切换，开发环境与生产环境无缝衔接。任一后端不可用时自动降级至下一级，确保服务永不断线。
 
 - **AI 智能分析报告引擎**：自动聚合全量案件数据，调用 DeepSeek 大模型生成三段式叙事分析报告（总体态势/重点分析/工作建议），覆盖月度/季度/年度三种周期。同样采用三级降级策略，AI 不可用时规则引擎自动生成结构化报告，保证功能完整性。
 
@@ -129,7 +129,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **完整 ORM 建模**：SQLAlchemy 2.0 映射 15 张业务表，涵盖租户表、案件主表、去重记录、预警事件、人员档案、随访记录、政策库、审计日志、系统用户、RBAC 三表（roles/permissions/role_permissions）、分类映射、案件标签及多对多关联表。外键约束保障数据完整性，延迟加载优化查询性能，支持复杂多维统计查询。
 
-- **Redis 多级缓存**：驾驶舱实时计数器（Hash）、去重结果缓存（String，TTL 1h）、实时动态流消息队列（List，保留最近 50 条）。演示环境使用 fakeredis 零依赖运行，生产环境切换 redis-py 仅需一行配置。
+- **Redis 多级缓存**：驾驶舱实时计数器（Hash）、去重结果缓存（String，TTL 1h）、实时动态流消息队列（List，保留最近 50 条）。本地环境使用 fakeredis 零依赖运行，生产环境切换 redis-py 仅需一行配置。
 
 - **Redis 异步任务队列**：基于 Redis List 的轻量级消息队列，将耗时操作（批量去重 AI 语义比对、报告生成）从同步阻塞改为异步提交 + 前端轮询。后台守护线程消费队列任务，实时更新进度百分比，不引入 RabbitMQ/Kafka 等重依赖。
 
@@ -137,7 +137,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **JWT 认证与权限控制**：后台管理系统基于 JWT Token（HS256，24h 过期）+ bcrypt 密码哈希。API 层通过 `verify_token()` 中间件保护所有管理端点，Token 失效自动返回 401 并踢回登录页。用户表支持多角色（admin/operator/viewer）和账号启停。
 
-- **自动 API 文档**：FastAPI 原生 OpenAPI/Swagger 集成，Pydantic 数据模型自动生成请求验证、字段约束和交互式文档。Swagger UI 支持在线 Try it out，评委可直接在浏览器中测试所有 API 端点。
+- **自动 API 文档**：FastAPI 原生 OpenAPI/Swagger 集成，Pydantic 数据模型自动生成请求验证、字段约束和交互式文档。Swagger UI 支持在线 Try it out，运维人员可直接在浏览器中调试所有 API 端点。
 
 - **容器化一键部署**：Docker Compose 双容器编排（MySQL 8.4 + Python 3.12-slim），健康检查保证 MySQL 就绪后才启动 API 服务，初始化 SQL 自动挂载完成建库建表。数据卷持久化 MySQL 数据，环境变量管理所有配置项。
 
@@ -415,16 +415,16 @@ DB_NAME=fengqiao_zhidun
 
 | 模式 | 适用场景 | 安全等级 | 推理能力 |
 |------|---------|:--:|------|
-| 云端 DeepSeek-v4-pro | 日常演示、报表分析等非敏感场景 | ⭐⭐⭐ | 671B 参数，顶级推理 |
+| 云端 DeepSeek-v4-pro | 日常工作、统计分析等非敏感场景 | ⭐⭐⭐ | 671B 参数，顶级推理 |
 | 本地 Ollama (DeepSeek-R1) | 真实案件处理、敏感数据比对 | ⭐⭐⭐⭐⭐ | 蒸馏模型，满足业务需求 |
 | 本地 ST 向量模型 | 批量文本相似度计算 | ⭐⭐⭐⭐⭐ | 轻量高效，CPU 可运行 |
 | 规则引擎 | 全部后端不可用时的兜底 | ⭐⭐⭐⭐⭐ | 关键词+规则，零依赖 |
 
 切换方式：修改 `.env` 中 `AI_BACKEND` 一行配置，无需重启服务，前端即刻感知。
 
-## 🎯 演示流程
+## 🎯 操作流程
 
-驾驶舱 → 点击「进入系统演示」→ 四步闭环：
+驾驶舱 → 点击「进入系统功能」→ 四步闭环：
 
 ```
 ① Excel 导入 → 拖入案件列表 Excel → 18 字段自动解析 → 表格预览 → 写入 MySQL
