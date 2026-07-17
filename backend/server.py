@@ -54,6 +54,7 @@ from models import (
 from ai_service import semantic_similarity, field_scores
 from auth import login as auth_login, verify_token, seed_default_user
 from permissions import seed_rbac, require_perm, require_role, check_perm
+from tenant import get_tenant_context, list_tenants
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -487,7 +488,8 @@ def api_login(data: dict):
 @app.get('/api/admin/cases', tags=['管理后台'])
 def admin_cases(request: Request, page: int = 1, district: str = '', dispute_type: str = '', keyword: str = ''):
     check_perm(request, 'cases:read')
-    return admin_list_cases(page, 20, district, dispute_type, keyword)
+    ctx = get_tenant_context(request)
+    return admin_list_cases(page, 20, district, dispute_type, keyword, ctx['tenant_id'])
 
 @app.get('/api/admin/cases/{case_id}', tags=['管理后台'])
 def admin_get_case(request: Request, case_id: int):
@@ -499,7 +501,8 @@ def admin_get_case(request: Request, case_id: int):
 @app.post('/api/admin/cases', tags=['管理后台'])
 def admin_create_case(request: Request, data: dict):
     check_perm(request, 'cases:write')
-    try: return create_case(data)
+    ctx = get_tenant_context(request)
+    try: return create_case(data, ctx['tenant_id'] or 1)
     except Exception as e: raise HTTPException(500, str(e))
 
 @app.put('/api/admin/cases/{case_id}', tags=['管理后台'])
@@ -528,12 +531,14 @@ def admin_alerts(request: Request, page: int = 1, level: int = None):
 @app.get('/api/admin/persons', tags=['管理后台'])
 def admin_persons(request: Request, page: int = 1, person_type: str = ''):
     check_perm(request, 'persons:read')
-    return list_persons(page, 20, person_type)
+    ctx = get_tenant_context(request)
+    return list_persons(page, 20, person_type, ctx['tenant_id'])
 
 @app.post('/api/admin/persons', tags=['管理后台'])
 def admin_create_person(request: Request, data: dict):
     check_perm(request, 'persons:write')
-    try: return create_person(data)
+    ctx = get_tenant_context(request)
+    try: return create_person(data, ctx['tenant_id'] or 1)
     except Exception as e: raise HTTPException(500, str(e))
 
 @app.put('/api/admin/persons/{person_id}', tags=['管理后台'])
@@ -639,6 +644,11 @@ def admin_roles(request: Request):
     from permissions import ROLES, ROLE_PERMISSIONS
     return {name: {'label': info['label'], 'permissions': ROLE_PERMISSIONS.get(name, [])}
             for name, info in ROLES.items()}
+
+@app.get('/api/admin/tenants', tags=['管理后台'])
+def admin_tenants(request: Request):
+    check_perm(request, 'admin:access')
+    return list_tenants()
 
 
 # ==================== Static Frontend ====================

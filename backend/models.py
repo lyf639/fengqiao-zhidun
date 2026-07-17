@@ -37,12 +37,31 @@ class Base(DeclarativeBase):
 
 
 # ============================================================
+# 0. 多租户 - 乡镇/街道 (tenants)
+# ============================================================
+class Tenant(Base):
+    __tablename__ = 'tenants'
+
+    id               = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name             = mapped_column(String(50), nullable=False, unique=True, comment='乡镇名称')
+    code             = mapped_column(String(20), nullable=False, unique=True, comment='租户编码: gouqi')
+    district         = mapped_column(String(50), default='', comment='所属区县')
+    is_active        = mapped_column(Integer, default=1, comment='是否启用')
+    created_at       = mapped_column(DateTime, default=datetime.now)
+
+    users            = relationship('User', back_populates='tenant', lazy='dynamic')
+    cases            = relationship('Case', back_populates='tenant', lazy='dynamic')
+    person_profiles  = relationship('PersonProfile', back_populates='tenant', lazy='dynamic')
+
+
+# ============================================================
 # 1. 矛盾纠纷案件
 # ============================================================
 class Case(Base):
     __tablename__ = 'cases'
 
     id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id        = mapped_column(Integer, ForeignKey('tenants.id'), nullable=False, index=True, comment='所属乡镇')
     case_code        = mapped_column(String(50), nullable=False, unique=True, comment='案件编码')
     agreement_type   = mapped_column(String(20), default='', comment='协议类型')
     case_source      = mapped_column(String(60), default='', comment='案件来源')
@@ -71,6 +90,7 @@ class Case(Base):
     created_at       = mapped_column(DateTime, default=datetime.now)
     updated_at       = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+    tenant           = relationship('Tenant', back_populates='cases')
     # 关联
     dedup_matches    = relationship('DedupRecord', foreign_keys='DedupRecord.case_id',
                                      back_populates='case', lazy='dynamic', cascade='all, delete-orphan')
@@ -139,6 +159,7 @@ class PersonProfile(Base):
     __tablename__ = 'person_profiles'
 
     id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id        = mapped_column(Integer, ForeignKey('tenants.id'), nullable=False, index=True, comment='所属乡镇')
     name             = mapped_column(String(50), nullable=False, index=True)
     id_card          = mapped_column(String(200), default='', comment='身份证号 加密存储')
     person_type      = mapped_column(String(50), nullable=False, index=True, comment='精神障碍/刑满释放/社区矫正等')
@@ -153,6 +174,7 @@ class PersonProfile(Base):
 
     follow_ups       = relationship('FollowUpRecord', back_populates='person',
                                      lazy='dynamic', cascade='all, delete-orphan')
+    tenant           = relationship('Tenant', back_populates='person_profiles')
 
 
 # ============================================================
@@ -221,6 +243,7 @@ class User(Base):
     __tablename__ = 'users'
 
     id               = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tenant_id        = mapped_column(Integer, ForeignKey('tenants.id'), nullable=True, index=True, comment='所属乡镇; NULL=超级管理员')
     username         = mapped_column(String(50), nullable=False, unique=True, index=True, comment='用户名')
     password_hash    = mapped_column(String(200), nullable=False, comment='bcrypt 密码哈希')
     display_name     = mapped_column(String(50), default='', comment='显示名称')
@@ -228,6 +251,8 @@ class User(Base):
     is_active        = mapped_column(Integer, default=1, comment='是否启用')
     last_login       = mapped_column(DateTime, nullable=True)
     created_at       = mapped_column(DateTime, default=datetime.now)
+
+    tenant           = relationship('Tenant', back_populates='users')
 
 
 # ============================================================

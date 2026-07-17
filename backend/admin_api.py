@@ -22,10 +22,12 @@ from models import (
 
 # ==================== 案件 CRUD ====================
 
-def list_cases(page=1, page_size=20, district='', dispute_type='', keyword=''):
+def list_cases(page=1, page_size=20, district='', dispute_type='', keyword='', tenant_id=None):
     session = get_session()
     try:
         q = session.query(Case)
+        if tenant_id is not None:
+            q = q.filter(Case.tenant_id == tenant_id)
         if district: q = q.filter(Case.district.like(f'%{district}%'))
         if dispute_type: q = q.filter(Case.dispute_type.like(f'%{dispute_type}%'))
         if keyword:
@@ -49,10 +51,11 @@ def get_case(case_id: int):
         session.close()
 
 
-def create_case(data: dict):
+def create_case(data: dict, tenant_id: int = 1):
     session = get_session()
     try:
         c = Case(
+            tenant_id=tenant_id,
             case_code=data.get('case_code', ''),
             agreement_type=data.get('agreement_type', ''),
             case_source=data.get('case_source', ''),
@@ -182,10 +185,12 @@ def list_alerts(page=1, page_size=20, level=None):
 
 # ==================== 人员档案 ====================
 
-def list_persons(page=1, page_size=20, person_type=''):
+def list_persons(page=1, page_size=20, person_type='', tenant_id=None):
     session = get_session()
     try:
         q = session.query(PersonProfile)
+        if tenant_id is not None:
+            q = q.filter(PersonProfile.tenant_id == tenant_id)
         if person_type: q = q.filter(PersonProfile.person_type.like(f'%{person_type}%'))
         total = q.count()
         rows = q.order_by(PersonProfile.id.desc()).offset((page-1)*page_size).limit(page_size).all()
@@ -201,10 +206,11 @@ def list_persons(page=1, page_size=20, person_type=''):
         session.close()
 
 
-def create_person(data: dict):
+def create_person(data: dict, tenant_id: int = 1):
     session = get_session()
     try:
         p = PersonProfile(
+            tenant_id=tenant_id,
             name=data.get('name',''), person_type=data.get('person_type',''),
             risk_level=int(data.get('risk_level',1)), departments=data.get('departments',''),
             district=data.get('district',''), phone=data.get('phone',''),

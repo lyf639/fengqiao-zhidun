@@ -155,12 +155,15 @@ def get_user_permissions(username: str) -> set[str]:
 
 
 def check_perm(request: Request, permission: str):
-    """行内权限检查：验证 Token 并检查权限，无权限直接抛 403"""
+    """行内权限检查：验证 Token 并检查权限，同时注入租户上下文，无权限直接抛 403"""
     payload = verify_token(request)
     user_role = payload.get('role', '')
     user_perms = ROLE_PERMISSIONS.get(user_role, [])
     if permission not in user_perms:
         raise HTTPException(403, f'权限不足，需要: {permission}')
+    # 注入租户上下文
+    from tenant import set_tenant_context
+    set_tenant_context(request, payload)
     return payload
 
 

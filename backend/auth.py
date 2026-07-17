@@ -32,11 +32,14 @@ def verify_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 
-def create_token(user_id: int, username: str, role: str) -> str:
+def create_token(user_id: int, username: str, role: str, tenant_id: int | None = None, tenant_code: str = '', tenant_name: str = '') -> str:
     payload = {
         'user_id': user_id,
         'username': username,
         'role': role,
+        'tenant_id': tenant_id,
+        'tenant_code': tenant_code,
+        'tenant_name': tenant_name,
         'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS),
         'iat': datetime.utcnow(),
     }
@@ -65,7 +68,8 @@ def verify_token(request: Request) -> dict:
 
 
 def login(username: str, password: str) -> dict:
-    """验证用户名密码，返回 token"""
+    """验证用户名密码，返回 token（含租户信息）"""
+    from models import Tenant
     session = get_session()
     try:
         user = session.query(User).filter(
@@ -75,12 +79,28 @@ def login(username: str, password: str) -> dict:
             raise HTTPException(401, '用户名或密码错误')
         user.last_login = datetime.now()
         session.commit()
-        token = create_token(user.id, user.username, user.role)
+
+        # 查询租户信息
+        tenant_id = None
+        tenant_code = ''
+        tenant_name = ''
+        if user.tenant_id:
+            tenant = session.query(Tenant).get(user.tenant_id)
+            if tenant:
+                tenant_id = tenant.id
+                tenant_code = tenant.code
+                tenant_name = tenant.name
+
+        token = create_token(user.id, user.username, user.role,
+                            tenant_id, tenant_code, tenant_name)
         return {
             'token': token,
             'username': user.username,
             'display_name': user.display_name or user.username,
             'role': user.role,
+            'tenant_id': tenant_id,
+            'tenant_code': tenant_code,
+            'tenant_name': tenant_name,
         }
     finally:
         session.close()
