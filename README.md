@@ -94,23 +94,23 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  用户交互层    HTML5 + Chart.js + SheetJS        │
+│  用户交互层    HTML5 + Chart.js + WebSocket     │
 │              CSS/JS 模块化 · 响应式布局          │
 ├─────────────────────────────────────────────────┤
-│  安全网关层    JWT 认证 · CORS 跨域 · 静态托管    │
+│  安全网关层    JWT 认证 · CORS 跨域 · 令牌桶限流  │
 ├─────────────────────────────────────────────────┤
 │  服务网关层    FastAPI + Pydantic + Swagger      │
-│              24+ RESTful 端点 · 自动文档生成      │
+│              29+ RESTful 端点 · 自动文档生成     │
 ├─────────────────────────────────────────────────┤
-│  业务逻辑层    SQLAlchemy 2.0 ORM · 11 张数据表   │
+│  业务逻辑层    SQLAlchemy 2.0 ORM · 16 张数据表   │
 │              外键约束 · 多对多关联 · 延迟加载     │
 ├───────────────┬─────────────────────────────────┤
-│  数据存储层    │  AI 语义层                       │
-│  MySQL 8.4    │  DeepSeek-v4-pro / ST / Ollama   │
-│  utf8mb4      │  四后端插件 · 自动降级 · 热切换   │
+│  数据存储层    │  AI 微服务层 (gRPC :50051)      │
+│  MySQL 8.4    │  DeepSeek-v4-pro / Ollama       │
+│  Master/Slave │  流式去重 · 报告生成 · 语义分析   │
 ├───────────────┼─────────────────────────────────┤
-│  缓存加速层    │  AI 分析层                       │
-│  Redis        │  智能报告引擎（三级降级）          │
+│  缓存加速层    │  实时推送层 (WebSocket /ws)     │
+│  Redis        │  仪表盘/预警/进度实时广播         │
 └───────────────┴─────────────────────────────────┘
 ```
 
@@ -141,6 +141,10 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 - **全流程可追溯**：`audit_logs` 审计日志表以 JSON 格式记录每一次操作（导入/去重/预警/CRUD）的详细信息，配合 30+ 次高频原子化 Git 提交，满足算法可审计、内容可溯源的合规红线要求。
 
 - **Prometheus 监控 + 流量控制**：`metrics.py` 暴露 `/metrics` 端点，覆盖业务指标（案件/去重/预警/AI 调用次数、导入耗时）、HTTP 指标（请求计数+延时 Histogram）、系统指标（任务队列长度）。`rate_limiter.py` 基于 Redis 令牌桶实现分布式限流，预置 strict(30/min)/normal(100/min)/import(10/min)/ai(5/min) 四档策略，超限自动返回 429 + Retry-After 头。
+
+- **gRPC 微服务架构**：AI 分析引擎独立为 `ai_server.py`（gRPC :50051），主服务通过 `grpc_client.py`（protocol buffer + stub）调用，支持流式进度返回。主服务与 AI 服务解耦部署，AI 不可用时自动回退本地执行，零感知切换。`proto/fengqiao.proto` 定义了全部 RPC 接口规范。
+
+- **WebSocket 实时推送**：`websocket.py` 实现多频道广播（`cockpit:feed` 动态流、`cockpit:dashboard` 仪表盘、`task:{id}` 任务进度），Redis Pub/Sub + asyncio 异步轮询驱动，前端断线自动重连（3s），驾驶舱数据从定时轮询升级为事件驱动实时更新。
 
 - **模块化前端架构**：CSS 独立为 `style.css`（281 行），JavaScript 按职责拆分为 `cockpit.js`（驾驶舱）和 `demo.js`（四步流程），HTML 精简为 302 行纯结构骨架。代码注释覆盖率超过 90%，每个模块顶部均有职责说明和调用关系图。
 

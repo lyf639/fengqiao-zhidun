@@ -1,0 +1,69 @@
+// 枫桥智盾 · gRPC 服务定义
+// ==========================
+// AI 语义分析微服务接口定义
+//
+// 编译：python -m grpc_tools.protoc -I. --python_out=../backend --grpc_python_out=../backend fengqiao.proto
+
+syntax = "proto3";
+
+package fengqiao;
+
+// === Semantic Analysis Service ===
+service SemanticService {
+  // 语义相似度计算
+  rpc ComputeSimilarity (SimilarityRequest) returns (SimilarityResponse);
+
+  // 批量去重（流式返回进度）
+  rpc BatchDedup (DedupRequest) returns (stream DedupProgress);
+
+  // AI 分析报告生成
+  rpc GenerateReport (ReportRequest) returns (ReportResponse);
+
+  // 健康检查
+  rpc HealthCheck (HealthRequest) returns (HealthResponse);
+}
+
+// === Messages ===
+
+message SimilarityRequest {
+  string text_a = 1;
+  string text_b = 2;
+}
+
+message SimilarityResponse {
+  float score = 1;
+  string backend = 2;   // deepseek / ollama / mock
+}
+
+message DedupRequest {
+  repeated int64 case_ids = 1;
+  string batch = 2;
+}
+
+message DedupProgress {
+  int32 progress = 1;      // 0-100
+  string status = 2;       // running / done / failed
+  int32 matches = 3;       // 匹配数
+  int32 total = 4;         // 总数
+  string result_json = 5;  // 完成时返回 JSON 结果
+}
+
+message ReportRequest {
+  string report_type = 1;  // monthly / quarterly / yearly
+  int32 year = 2;
+  int32 period = 3;
+}
+
+message ReportResponse {
+  bool success = 1;
+  string report_json = 2;
+  string error = 3;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool ok = 1;
+  string backend = 2;
+  string version = 3;
+}

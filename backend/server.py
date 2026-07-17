@@ -37,7 +37,7 @@ from urllib.parse import quote_plus
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -62,6 +62,8 @@ from cache_guard import _jitter as ttl_jitter
 from metrics import get_metrics_response, MetricsMiddleware, start_metrics_updater
 from metrics import cases_total, alerts_total, dedup_total, ai_call_total, import_histogram
 from rate_limiter import rate_limit
+from websocket import register as ws_register, start_feed_poller
+from grpc_client import ai_health
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -190,6 +192,7 @@ def startup():
     seed_rbac()
     start_worker()
     start_metrics_updater()
+    start_feed_poller()
     print('枫桥智盾 FastAPI 已启动')
     print('Swagger 文档: http://localhost:5000/docs')
     print('ReDoc 文档:  http://localhost:5000/redoc')
@@ -662,8 +665,14 @@ def admin_tenants(request: Request):
 
 @app.get('/api/cluster/status', tags=['集群'])
 def cluster_status():
-    """返回数据库集群 + API 节点 + 缓存防护状态"""
-    return {'database': db_status(), 'cache': guard_stats(), 'api_nodes': 1, 'api_port': 5000}
+    """返回数据库集群 + API 节点 + 缓存 + AI 微服务状态"""
+    return {
+        'database': db_status(),
+        'cache': guard_stats(),
+        'ai_service': ai_health(),
+        'api_nodes': 1,
+        'api_port': 5000,
+    }
 
 @app.get('/metrics', tags=['监控'])
 def metrics():
@@ -671,6 +680,14 @@ def metrics():
     from fastapi.responses import Response
     body, content_type = get_metrics_response()
     return Response(content=body, media_type=content_type)
+
+@app.websocket('/ws')
+async def websocket_endpoint(ws: WebSocket):
+    """WebSocket 实时推送端点"""
+    await ws_register(ws, 'cockpit:feed')
+
+
+# ==================== 异步任务队列 (gRPC AI 微服务) ====================
 
 @app.post('/api/tasks/dedup', tags=['异步任务'])
 def async_dedup(data: dict):

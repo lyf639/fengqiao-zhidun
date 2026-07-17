@@ -8,6 +8,30 @@
 //   跨域访问 localhost:3000 → http://localhost:5000
 const API_BASE = window.location.port === '5000' ? '' : 'http://localhost:5000';
 
+// ===== WebSocket 实时推送 =====
+// 接收 AI 任务进度、预警弹窗、仪表盘更新等实时事件
+const WS_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws';
+let ws = null;
+function connectWS() {
+  ws = new WebSocket(WS_URL);
+  ws.onmessage = function(e) {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'dashboard_update') {
+        document.getElementById('counterTotal').textContent = msg.total;
+        document.getElementById('counterDedup').textContent = msg.dedup;
+        document.getElementById('counterAlerts').textContent = msg.alerts;
+        document.getElementById('counterResolved').textContent = msg.resolved;
+      } else if (msg.type === 'feed') {
+        const list = document.getElementById('feedList');
+        if (list) { list.innerHTML = '<div class="feed-item"><span class="feed-time">' + (msg.time || '') + '</span>' + (msg.text || '') + '</div>' + list.innerHTML; }
+      }
+    } catch(e) {}
+  };
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+connectWS();
+
 // ===== 时钟 =====
 // 顶部状态栏实时时钟，每 10 秒刷新
 function updateClock() {
