@@ -17,7 +17,7 @@ docker-compose up -d                          # MySQL + API + 前端
 | 入口 | 地址 | 说明 |
 |------|------|------|
 | 驾驶舱 | http://localhost:5000 | 实时数据大屏 + AI 报告生成 |
-| 后台管理 | http://localhost:5000/admin | 全表 CRUD，admin/admin 登录 |
+| 后台管理 | http://localhost:5000/admin | 全表 CRUD，admin/admin123 登录（超级管理员） |
 | Swagger | http://localhost:5000/docs | 交互式 API 文档，支持在线调试 |
 | ReDoc | http://localhost:5000/redoc | 备用 API 文档 |
 
@@ -192,7 +192,10 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 | follow_up_records | 随访记录 | 日期/内容/到期提醒 |
 | policy_library | 政策法规库 | 条件/补贴/流程 |
 | audit_logs | 操作审计日志 | JSON 格式全链路记录 |
-| users | 系统用户 | bcrypt 密码哈希 + JWT 认证 |
+| users | 系统用户 | bcrypt 密码哈希 + JWT 认证 + RBAC 角色 |
+| roles | RBAC 角色 | super_admin/admin/operator/viewer |
+| permissions | RBAC 权限 | 14 个细粒度权限码 |
+| role_permissions | 角色-权限关联 | 多对多中间表 |
 | category_mappings | 分类映射 | 上游系统分类 → 标准分类 |
 | case_tags | 案件标签 | 多维标签体系 |
 | case_tag_relations | 标签关联表 | 多对多中间表 |
@@ -257,6 +260,21 @@ DB_NAME=fengqiao_zhidun
 - **传输安全**：JWT Token 通过 HTTP Authorization Bearer 头传输，24 小时自动过期
 - **API 防护**：所有 `/api/admin/*` 端点受 `verify_token()` 中间件保护，未认证请求返回 401
 - **密钥管理**：`.env` 文件已加入 `.gitignore`，API 密钥和环境变量绝不会提交至版本控制
+
+### 权限管理（RBAC）
+
+四角色 + 十四权限码的细粒度访问控制体系，数据库层 `roles` / `permissions` / `role_permissions` 三表支撑。
+
+| 角色 | 标识 | 权限范围 |
+|------|------|------|
+| 超级管理员 | `super_admin` | 全部权限，含用户创建/角色分配（最高权限） |
+| 管理员 | `admin` | 全部业务数据 CRUD，不可管理用户 |
+| 操作员 | `operator` | 读写案件/人员 + 查看预警/去重 + 生成报告 |
+| 观察员 | `viewer` | 只读全部数据 |
+
+**14 个权限码**覆盖 6 大资源：`cases:read|write|delete`、`persons:read|write|delete`、`alerts:read|manage`、`dedup:read|manage`、`audit:read`、`report:generate`、`admin:access`、`users:manage`。
+
+所有管理 API 路由通过 `check_perm(request, 'perm_code')` 行内校验，JWT Token 中携带 `role` 字段，后端根据角色映射动态判定权限，无权限操作直接返回 403。
 
 ### 合规审计
 
