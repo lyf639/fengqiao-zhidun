@@ -211,23 +211,23 @@
 <h2 id="_12">三、技术架构</h2>
 <h3 id="_13">整体架构</h3>
 <pre><code>┌─────────────────────────────────────────────────┐
-│  用户交互层    HTML5 + Chart.js + WebSocket     │
-│              CSS/JS 模块化 · 响应式布局          │
+│  用户交互层    HTML5, Chart.js, WebSocket      │
+│              CSS/JS modular, responsive        │
 ├─────────────────────────────────────────────────┤
-│  安全网关层    JWT 认证 · CORS 跨域 · 令牌桶限流  │
+│  安全网关层    JWT auth, CORS, TokenBucket     │
 ├─────────────────────────────────────────────────┤
-│  服务网关层    FastAPI + Pydantic + Swagger      │
-│              29+ RESTful 端点 · 自动文档生成     │
+│  服务网关层    FastAPI, Pydantic, Swagger      │
+│              29+ RESTful endpoints             │
 ├─────────────────────────────────────────────────┤
-│  业务逻辑层    SQLAlchemy 2.0 ORM · 15 张数据表   │
-│              外键约束 · 多对多关联 · 延迟加载     │
+│  业务逻辑层    SQLAlchemy 2.0, 15 tables       │
+│              FK constraints, M-N relations     │
 ├───────────────┬─────────────────────────────────┤
-│  数据存储层    │  AI 微服务层 (gRPC :50051)      │
-│  MySQL 8.4    │  DeepSeek-v4-pro / Ollama       │
-│  Master/Slave │  流式去重 · 报告生成 · 语义分析   │
+│  数据存储层    │  AI 微服务层 (gRPC :50051)    │
+│  MySQL 8.4    │  DeepSeek-v4-pro, Ollama       │
+│  Master/Slave │  流式去重, 报告生成, 语义分析    │
 ├───────────────┼─────────────────────────────────┤
-│  缓存加速层    │  实时推送层 (WebSocket /ws)     │
-│  Redis        │  仪表盘/预警/进度实时广播         │
+│  缓存加速层    │  实时推送层 (WebSocket /ws)   │
+│  Redis        │  仪表盘/预警/进度实时广播        │
 └───────────────┴─────────────────────────────────┘
 </code></pre>
 <h3 id="_14">技术选型</h3>
@@ -351,67 +351,67 @@
 <p><strong>多租户数据隔离</strong>：乡镇（街道）级多租户架构，<code>tenants</code> 表 + <code>cases</code>/<code>persons</code>/<code>users</code> 三表 <code>tenant_id</code> 外键。JWT Token 内嵌租户上下文，SQLAlchemy Query 自动追加 <code>WHERE tenant_id = ?</code> 过滤。超级管理员（<code>tenant_id=NULL</code>）可跨租户查看全部数据。</p>
 <p><strong>合规审计</strong>：<code>audit_logs</code> 表 JSON 格式全链路操作记录 + 30+ 次原子化 Git 提交 + AI 提示词版本化管理。</p>
 <h3 id="_17">容灾与高可用</h3>
-<pre><code>         ┌──────────┐     ┌──────────┐     ┌──────────┐
-         │  NGINX   │────▶│  NGINX   │────▶│  NGINX   │  (健康检查剔除)
-         │  :80     │     │  :80     │     │  :80     │
-         └────┬─────┘     └──────────┘     └──────────┘
-              │
-    ┌─────────┼─────────┬─────────┬─────────┐
-    │         │         │         │         │
-┌───┴───┐ ┌──┴────┐ ┌──┴────┐ ┌──┴────┐    │
+<pre><code>         ┌──────────┬──────────┬──────────┐
+         │  NGINX   │  NGINX   │  NGINX   │  (健康检查剔除)
+         │  :80     │  :80     │  :80     │
+         └────┬─────┴────┬─────┴────┬─────┘
+              │          │          │
+    ┌─────────┼──────────┼──────────┼─────────┐
+    │         │          │          │         │
+┌───┴───┐ ┌──┴────┐ ┌───┴───┐ ┌───┴───┐    │
 │ API-1 │ │ API-2 │ │ API-3 │ │ ...   │    │  Supervisor
 │ :5000 │ │ :5001 │ │ :5002 │ │       │    │  自动重启
-└───┬───┘ └──┬────┘ └──┬────┘ └───────┘    │
-    │        │         │                    │
-    │   ┌────┴─────────┴────┐              │
-    │   │   熔断器           │  ← 3次失败触发│
-    │   │   CircuitBreaker   │              │
-    │   └────────┬──────────┘              │
-    │            │                         │
-    │   ┌────────┴──────────┐              │
-    │   │  AI 微服务集群     │              │
-    │   │  gRPC :50051      │  自动回退本地  │
-    │   └───────────────────┘              │
+└───┬───┘ └──┬────┘ └───┬───┘ └───────┘    │
+    │        │           │                 │
+    │   ┌────┴───────────┴────┐            │
+    │   │   熔断器             │ 3次失败触发 │
+    │   │   CircuitBreaker     │            │
+    │   └─────────┬───────────┘            │
+    │             │                         │
+    │   ┌─────────┴───────────┐            │
+    │   │  AI 微服务集群       │ 自动回退本地 │
+    │   │  gRPC :50051        │            │
+    │   └─────────────────────┘            │
     │                                      │
-    └──────────┬───────────────────────────┘
-               │
-    ┌──────────┴───────────┐
-    │  MySQL Master/Slave   │  读写分离 + 自动故障转移
-    └──────────────────────┘
+    └────────────┬─────────────────────────┘
+                 │
+    ┌────────────┴─────────────┐
+    │  MySQL Master/Slave       │  读写分离 + 故障转移
+    └──────────────────────────┘
 </code></pre>
 <table>
 <thead>
 <tr>
 <th>容灾层</th>
 <th>机制</th>
-<th style="text-align: center;">恢复时间</th>
+<th style="text-align: center;">恢复</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>进程级</td>
-<td>Supervisor <code>autorestart=true</code>，崩溃秒级自动拉起</td>
-<td style="text-align: center;">&lt; 10s</td>
+<td>Supervisor autorestart，秒级自动拉起</td>
+<td style="text-align: center;">&lt;10s</td>
 </tr>
 <tr>
 <td>服务级</td>
-<td>NGINX 健康检查，<code>max_fails=3</code> 自动剔除故障节点</td>
-<td style="text-align: center;">&lt; 30s</td>
+<td>NGINX max_fails=3，剔除故障节点</td>
+<td style="text-align: center;">&lt;30s</td>
 </tr>
 <tr>
 <td>通信级</td>
-<td>gRPC 熔断器，3 次失败 → 熔断 60s → 半开试探 → 恢复</td>
-<td style="text-align: center;">&lt; 60s</td>
+<td>熔断器 3次失败→熔断60s→半开试探→恢复</td>
+<td style="text-align: center;">&lt;60s</td>
 </tr>
 <tr>
 <td>数据级</td>
-<td>MySQL 主从复制，从库不可用时读写自动回退主库</td>
-<td style="text-align: center;">0s（无感知）</td>
+<td>从库不可用，读写自动回退主库</td>
+<td style="text-align: center;">0s</td>
 </tr>
 <tr>
 <td>缓存级</td>
-<td>fakeredis 内存缓存，进程重启后从 DB 回源重建</td>
-<td style="text-align: center;">&lt; 5s</td>
+<td>fakeredis 内存缓存，重启回源 DB</td>
+<td style="text-align: center;">&lt;5s</td>
 </tr>
 </tbody>
 </table>
