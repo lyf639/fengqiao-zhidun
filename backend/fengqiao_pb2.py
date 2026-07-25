@@ -24,29 +24,33 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x66\x65ngqiao.proto\x12\x08\x66\x65ngqiao\"3\n\x11SimilarityRequest\x12\x0e\n\x06text_a\x18\x01 \x01(\t\x12\x0e\n\x06text_b\x18\x02 \x01(\t\"4\n\x12SimilarityResponse\x12\r\n\x05score\x18\x01 \x01(\x02\x12\x0f\n\x07\x62\x61\x63kend\x18\x02 \x01(\t\"/\n\x0c\x44\x65\x64upRequest\x12\x10\n\x08\x63\x61se_ids\x18\x01 \x03(\x03\x12\r\n\x05\x62\x61tch\x18\x02 \x01(\t\"f\n\rDedupProgress\x12\x10\n\x08progress\x18\x01 \x01(\x05\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x0f\n\x07matches\x18\x03 \x01(\x05\x12\r\n\x05total\x18\x04 \x01(\x05\x12\x13\n\x0bresult_json\x18\x05 \x01(\t\"B\n\rReportRequest\x12\x13\n\x0breport_type\x18\x01 \x01(\t\x12\x0c\n\x04year\x18\x02 \x01(\x05\x12\x0e\n\x06period\x18\x03 \x01(\x05\"E\n\x0eReportResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x13\n\x0breport_json\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"\x0f\n\rHealthRequest\">\n\x0eHealthResponse\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0f\n\x07\x62\x61\x63kend\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t2\xa9\x02\n\x0fSemanticService\x12N\n\x11\x43omputeSimilarity\x12\x1b.fengqiao.SimilarityRequest\x1a\x1c.fengqiao.SimilarityResponse\x12?\n\nBatchDedup\x12\x16.fengqiao.DedupRequest\x1a\x17.fengqiao.DedupProgress0\x01\x12\x43\n\x0eGenerateReport\x12\x17.fengqiao.ReportRequest\x1a\x18.fengqiao.ReportResponse\x12@\n\x0bHealthCheck\x12\x17.fengqiao.HealthRequest\x1a\x18.fengqiao.HealthResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x66\x65ngqiao.proto\x12\x08\x66\x65ngqiao\" \n\x10ParseTextRequest\x12\x0c\n\x04text\x18\x01 \x01(\t\"\\\n\x11ParseTextResponse\x12\x13\n\x0b\x66ields_json\x18\x01 \x01(\t\x12\x12\n\nconfidence\x18\x02 \x01(\x01\x12\x0f\n\x07\x62\x61\x63kend\x18\x03 \x01(\t\x12\r\n\x05\x65rror\x18\x04 \x01(\t\"3\n\x11SimilarityRequest\x12\x0e\n\x06text_a\x18\x01 \x01(\t\x12\x0e\n\x06text_b\x18\x02 \x01(\t\"4\n\x12SimilarityResponse\x12\r\n\x05score\x18\x01 \x01(\x02\x12\x0f\n\x07\x62\x61\x63kend\x18\x02 \x01(\t\"/\n\x0c\x44\x65\x64upRequest\x12\x10\n\x08\x63\x61se_ids\x18\x01 \x03(\x03\x12\r\n\x05\x62\x61tch\x18\x02 \x01(\t\"f\n\rDedupProgress\x12\x10\n\x08progress\x18\x01 \x01(\x05\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x0f\n\x07matches\x18\x03 \x01(\x05\x12\r\n\x05total\x18\x04 \x01(\x05\x12\x13\n\x0bresult_json\x18\x05 \x01(\t\"B\n\rReportRequest\x12\x13\n\x0breport_type\x18\x01 \x01(\t\x12\x0c\n\x04year\x18\x02 \x01(\x05\x12\x0e\n\x06period\x18\x03 \x01(\x05\"E\n\x0eReportResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x13\n\x0breport_json\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"\x0f\n\rHealthRequest\">\n\x0eHealthResponse\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0f\n\x07\x62\x61\x63kend\x18\x02 \x01(\t\x12\x0f\n\x07version\x18\x03 \x01(\t2\xef\x02\n\x0fSemanticService\x12N\n\x11\x43omputeSimilarity\x12\x1b.fengqiao.SimilarityRequest\x1a\x1c.fengqiao.SimilarityResponse\x12?\n\nBatchDedup\x12\x16.fengqiao.DedupRequest\x1a\x17.fengqiao.DedupProgress0\x01\x12\x43\n\x0eGenerateReport\x12\x17.fengqiao.ReportRequest\x1a\x18.fengqiao.ReportResponse\x12@\n\x0bHealthCheck\x12\x17.fengqiao.HealthRequest\x1a\x18.fengqiao.HealthResponse\x12\x44\n\tParseText\x12\x1a.fengqiao.ParseTextRequest\x1a\x1b.fengqiao.ParseTextResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'fengqiao_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_SIMILARITYREQUEST']._serialized_start=28
-  _globals['_SIMILARITYREQUEST']._serialized_end=79
-  _globals['_SIMILARITYRESPONSE']._serialized_start=81
-  _globals['_SIMILARITYRESPONSE']._serialized_end=133
-  _globals['_DEDUPREQUEST']._serialized_start=135
-  _globals['_DEDUPREQUEST']._serialized_end=182
-  _globals['_DEDUPPROGRESS']._serialized_start=184
-  _globals['_DEDUPPROGRESS']._serialized_end=286
-  _globals['_REPORTREQUEST']._serialized_start=288
-  _globals['_REPORTREQUEST']._serialized_end=354
-  _globals['_REPORTRESPONSE']._serialized_start=356
-  _globals['_REPORTRESPONSE']._serialized_end=425
-  _globals['_HEALTHREQUEST']._serialized_start=427
-  _globals['_HEALTHREQUEST']._serialized_end=442
-  _globals['_HEALTHRESPONSE']._serialized_start=444
-  _globals['_HEALTHRESPONSE']._serialized_end=506
-  _globals['_SEMANTICSERVICE']._serialized_start=509
-  _globals['_SEMANTICSERVICE']._serialized_end=806
+  _globals['_PARSETEXTREQUEST']._serialized_start=28
+  _globals['_PARSETEXTREQUEST']._serialized_end=60
+  _globals['_PARSETEXTRESPONSE']._serialized_start=62
+  _globals['_PARSETEXTRESPONSE']._serialized_end=154
+  _globals['_SIMILARITYREQUEST']._serialized_start=156
+  _globals['_SIMILARITYREQUEST']._serialized_end=207
+  _globals['_SIMILARITYRESPONSE']._serialized_start=209
+  _globals['_SIMILARITYRESPONSE']._serialized_end=261
+  _globals['_DEDUPREQUEST']._serialized_start=263
+  _globals['_DEDUPREQUEST']._serialized_end=310
+  _globals['_DEDUPPROGRESS']._serialized_start=312
+  _globals['_DEDUPPROGRESS']._serialized_end=414
+  _globals['_REPORTREQUEST']._serialized_start=416
+  _globals['_REPORTREQUEST']._serialized_end=482
+  _globals['_REPORTRESPONSE']._serialized_start=484
+  _globals['_REPORTRESPONSE']._serialized_end=553
+  _globals['_HEALTHREQUEST']._serialized_start=555
+  _globals['_HEALTHREQUEST']._serialized_end=570
+  _globals['_HEALTHRESPONSE']._serialized_start=572
+  _globals['_HEALTHRESPONSE']._serialized_end=634
+  _globals['_SEMANTICSERVICE']._serialized_start=637
+  _globals['_SEMANTICSERVICE']._serialized_end=1004
 # @@protoc_insertion_point(module_scope)

@@ -98,3 +98,22 @@ def ai_health() -> dict:
         except Exception:
             pass
     return {'ok': False, 'error': 'unreachable'}
+
+
+def ai_parse_text(text: str) -> dict:
+    """调用 AI 微服务解析文字为结构化字段"""
+    stub = _get_stub()
+    if stub:
+        try:
+            req = fengqiao_pb2.ParseTextRequest(text=text)
+            resp = stub.ParseText(req, timeout=GRPC_TIMEOUT)
+            return {
+                'fields': json.loads(resp.fields_json) if resp.fields_json else {},
+                'confidence': resp.confidence,
+                'backend': resp.backend,
+                'error': resp.error,
+            }
+        except Exception:
+            pass
+    from ai_service import parse_case_text
+    return parse_case_text(text)

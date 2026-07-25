@@ -28,7 +28,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True
 import fengqiao_pb2
 import fengqiao_pb2_grpc
 from models import Case, DedupRecord, get_session, init_db
-from ai_service import semantic_similarity, field_scores
+from ai_service import semantic_similarity, field_scores, parse_case_text
 from report_generator import generate_report as gen_report
 from redis_adapter import get_cache
 
@@ -41,6 +41,15 @@ class SemanticServiceImpl(fengqiao_pb2_grpc.SemanticServiceServicer):
     def HealthCheck(self, request, context):
         return fengqiao_pb2.HealthResponse(
             ok=True, backend=AI_BACKEND, version=VERSION
+        )
+
+    def ParseText(self, request, context):
+        result = parse_case_text(request.text)
+        return fengqiao_pb2.ParseTextResponse(
+            fields_json=json.dumps(result.get('fields', {}), ensure_ascii=False),
+            confidence=result.get('confidence', 0),
+            backend=result.get('backend', 'unknown'),
+            error=result.get('error', ''),
         )
 
     def ComputeSimilarity(self, request, context):

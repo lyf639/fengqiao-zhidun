@@ -55,6 +55,11 @@ class SemanticServiceStub:
                 request_serializer=fengqiao__pb2.HealthRequest.SerializeToString,
                 response_deserializer=fengqiao__pb2.HealthResponse.FromString,
                 _registered_method=True)
+        self.ParseText = channel.unary_unary(
+                '/fengqiao.SemanticService/ParseText',
+                request_serializer=fengqiao__pb2.ParseTextRequest.SerializeToString,
+                response_deserializer=fengqiao__pb2.ParseTextResponse.FromString,
+                _registered_method=True)
 
 
 class SemanticServiceServicer:
@@ -89,6 +94,13 @@ class SemanticServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ParseText(self, request, context):
+        """文字智能解析（一段话 → 结构化字段）
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_SemanticServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -111,6 +123,11 @@ def add_SemanticServiceServicer_to_server(servicer, server):
                     servicer.HealthCheck,
                     request_deserializer=fengqiao__pb2.HealthRequest.FromString,
                     response_serializer=fengqiao__pb2.HealthResponse.SerializeToString,
+            ),
+            'ParseText': grpc.unary_unary_rpc_method_handler(
+                    servicer.ParseText,
+                    request_deserializer=fengqiao__pb2.ParseTextRequest.FromString,
+                    response_serializer=fengqiao__pb2.ParseTextResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -222,6 +239,33 @@ class SemanticService:
             '/fengqiao.SemanticService/HealthCheck',
             fengqiao__pb2.HealthRequest.SerializeToString,
             fengqiao__pb2.HealthResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ParseText(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/fengqiao.SemanticService/ParseText',
+            fengqiao__pb2.ParseTextRequest.SerializeToString,
+            fengqiao__pb2.ParseTextResponse.FromString,
             options,
             channel_credentials,
             insecure,

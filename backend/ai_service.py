@@ -14,6 +14,7 @@
 核心函数：
   semantic_similarity(a, b)  → {'score': 0-20, 'reason': '...', 'backend': '...'}
   field_scores(a, b)          → {'phone': 0-40, 'address': 0-30, 'name': 0-10}
+  parse_case_text(text)       → {'fields': {...}, 'confidence': 0-1, 'backend': '...'}
 
 使用示例：
   result = semantic_similarity(case_a, case_b)
@@ -255,3 +256,145 @@ def _mock_similarity(a: dict, b: dict, backend='mock') -> dict:
         'reason': '；'.join(reasons) if reasons else f'规则匹配 ({backend})',
         'backend': backend.split('_')[0],
     }
+
+
+# ============================================================
+# 文字解析 - 结构化字段提取（三级降级）
+# ============================================================
+
+PARSE_PROMPT = """你是基层矛盾纠纷调解系统的智能助手。请从以下文字中提取纠纷案件的关键信息，只返回 JSON。
+
+文字内容：{text}
+
+返回格式（只返回 JSON，不要说别的话）：
+{{
+  "case_code": "",
+  "dispute_type": "",
+  "parties": "",
+  "district": "",
+  "amount": 0,
+  "description": "",
+  "difficulty": "简单纠纷",
+  "case_source": "",
+  "special_group": "",
+  "has_death": "否"
+}}
+
+要求：
+- parties 填写"申请人姓名 vs 被申请人姓名"
+- dispute_type 从以下选：损害赔偿纠纷、邻里纠纷、婚姻家庭纠纷、合同纠纷、劳动争议、土地纠纷、物业纠纷、医疗纠纷、交通事故纠纷、其他纠纷
+- district 填写乡镇/街道名称
+- amount 为涉及金额（数字），没有则填 0
+- description 为纠纷摘要（200 字以内）
+- difficulty 为 简单纠纷/一般纠纷/复杂纠纷
+"""
+
+
+def parse_case_text(text: str) -> dict:
+    """
+    将一段自然语言文字解析为结构化案件字段。
+    三级降级：deepseek → ollama → regex_parse
+    返回: {'fields': {...}, 'confidence': 0-1, 'backend': '...'}
+    """
+    text = text.strip()
+    if not text:
+        return {'fields': {}, 'confidence': 0, 'backend': 'empty', 'error': '输入为空'}
+
+    if AI_BACKEND == 'deepseek' and DEEPSEEK_API_KEY:
+        return _deepseek_parse(text)
+    elif AI_BACKEND == 'ollama':
+        return _ollama_parse(text)
+    else:
+        return _regex_parse(text)
+
+
+def _deepseek_parse(text: str) -> dict:
+    """DeepSeek API 解析"""
+    try:
+        resp = requests.post(
+            f'{DEEPSEEK_BASE_URL}/chat/completions',
+            headers={'Authorization': f'Bearer {DEEPSEEK_API_KEY}', 'Content-Type': 'application/json'},
+            json={'model': 'deepseek-chat', 'messages': [{'role': 'user', 'content': PARSE_PROMPT.format(text=text)}],
+                  'temperature': 0.1, 'max_tokens': 500},
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            raw = data['choices'][0]['message']['content'].strip()
+            start, end = raw.find('{'), raw.rfind('}') + 1
+            if start >= 0 and end > start:
+                return {'fields': json.loads(raw[start:end]), 'confidence': 0.9, 'backend': 'deepseek'}
+        return _ollama_parse(text) if OLLAMA_HOST else _regex_parse(text)
+    except Exception:
+        return _ollama_parse(text) if OLLAMA_HOST else _regex_parse(text)
+
+
+def _ollama_parse(text: str) -> dict:
+    """Ollama 本地模型解析"""
+    try:
+        resp = requests.post(
+            f'{OLLAMA_HOST}/api/generate',
+            json={'model': OLLAMA_MODEL, 'prompt': PARSE_PROMPT.format(text=text), 'stream': False,
+                  'options': {'temperature': 0.1, 'num_predict': 500}},
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            raw = data.get('response', '').strip()
+            start, end = raw.find('{'), raw.rfind('}') + 1
+            if start >= 0 and end > start:
+                return {'fields': json.loads(raw[start:end]), 'confidence': 0.7, 'backend': 'ollama'}
+        return _regex_parse(text)
+    except Exception:
+        return _regex_parse(text)
+
+
+def _regex_parse(text: str) -> dict:
+    """规则兜底：正则 + 关键词提取"""
+    import re
+    fields = {'case_code': '', 'dispute_type': '其他纠纷', 'parties': '', 'district': '',
+              'amount': 0, 'description': text[:200], 'difficulty': '简单纠纷',
+              'case_source': '', 'special_group': '', 'has_death': '否'}
+
+    # 提取金额
+    m = re.search(r'(\d+[\.\d]*)\s*万', text)
+    if m: fields['amount'] = float(m.group(1)) * 10000
+    else:
+        m = re.search(r'(\d+[\.\d]*)\s*元', text)
+        if m: fields['amount'] = float(m.group(1))
+
+    # 提取当事人（"XX vs XX" 或 "XX与XX" 或 "XX和XX"）
+    # 用更精确的模式：找"人名+连接词+人名"，限制名字长度
+    m = re.search(r'([\u4e00-\u9fa5]{2,4})\s*(?:vs|VS|和|与|同|对|跟)\s*([\u4e00-\u9fa5]{2,4})', text)
+    if m: fields['parties'] = f"{m.group(1)} vs {m.group(2)}"
+
+    # 提取区域
+    dist_keywords = ['乡', '镇', '街道', '村', '社区']
+    for kw in dist_keywords:
+        m = re.search(rf'([\u4e00-\u9fa5]{{2,4}}{kw})', text)
+        if m:
+            fields['district'] = m.group(1)
+            break
+
+    # 提取纠纷类型
+    types = {'损害赔偿纠纷': ['赔偿', '损伤', '伤害', '受伤', '损害'],
+             '邻里纠纷': ['邻居', '邻里', '漏水', '噪音', '楼道'],
+             '婚姻家庭纠纷': ['离婚', '抚养', '赡养', '继承', '婚姻'],
+             '土地纠纷': ['土地', '宅基地', '拆迁', '征地'],
+             '合同纠纷': ['合同', '违约', '欠款', '拖欠'],
+             '劳动争议': ['工资', '劳动', '工伤', '社保'],
+             '物业纠纷': ['物业', '小区', '停车', '电梯'],
+             '交通事故纠纷': ['交通', '车祸', '撞', '剐蹭']}
+    for t, kws in types.items():
+        if any(kw in text for kw in kws):
+            fields['dispute_type'] = t
+            break
+
+    # 提取难度
+    if any(kw in text for kw in ['死亡', '重伤', '命案', '重大']):
+        fields['difficulty'] = '复杂纠纷'
+        fields['has_death'] = '是' if any(k in text for k in ['死亡', '死', '命案']) else '否'
+    elif any(kw in text for kw in ['争议', '多次', '上访', '报警']):
+        fields['difficulty'] = '一般纠纷'
+
+    return {'fields': fields, 'confidence': 0.4, 'backend': 'regex'}

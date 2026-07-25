@@ -21,9 +21,23 @@ service SemanticService {
 
   // 健康检查
   rpc HealthCheck (HealthRequest) returns (HealthResponse);
+
+  // 文字智能解析（一段话 → 结构化字段）
+  rpc ParseText (ParseTextRequest) returns (ParseTextResponse);
 }
 
 // === Messages ===
+
+message ParseTextRequest {
+  string text = 1;
+}
+
+message ParseTextResponse {
+  string fields_json = 1;
+  double confidence = 2;
+  string backend = 3;
+  string error = 4;
+}
 
 message SimilarityRequest {
   string text_a = 1;

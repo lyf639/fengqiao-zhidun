@@ -51,7 +51,7 @@ from models import (
     Policy, AuditLog, CategoryMapping, CaseTag, CaseTagRelation,
     get_session, init_db,
 )
-from ai_service import semantic_similarity, field_scores
+from ai_service import semantic_similarity, field_scores, parse_case_text
 from auth import login as auth_login, verify_token, seed_default_user
 from permissions import seed_rbac, require_perm, require_role, check_perm
 from tenant import get_tenant_context, list_tenants
@@ -248,6 +248,21 @@ def list_cases(limit: int = 50):
         } for c in cases]}
     finally:
         session.close()
+
+
+# ==================== Import ====================
+
+@app.post('/api/parse-text', tags=['AI 解析'])
+def api_parse_text(data: dict):
+    """
+    文字智能解析 —— 一段话输入 → AI 提取结构化字段
+    三级降级：DeepSeek → Ollama → 正则兜底
+    返回: {fields: {...}, confidence: 0-1, backend: 'deepseek'|'ollama'|'regex'}
+    """
+    text = data.get('text', '')
+    if not text or len(text.strip()) < 10:
+        raise HTTPException(400, '请输入至少 10 个字的案件描述')
+    return parse_case_text(text)
 
 
 # ==================== Import ====================

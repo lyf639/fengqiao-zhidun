@@ -179,13 +179,28 @@
     <!-- STEP 1 -->
     <div class="step-panel active" id="step1">
       <div class="step-title">Excel 一键导入</div>
-      <div class="step-subtitle">从其他系统导出的案件列表 Excel，拖入或点击上传，系统自动解析入库</div>
+      <div class="step-subtitle">Excel 批量导入 或 AI 文字解析录入 —— 两种方式均可快速入库</div>
+      <!-- 方式 A: Excel 上传 -->
       <div class="upload-zone" id="uploadZone">
         <div class="upload-icon">📂</div>
-        <div class="upload-title">点击上传或拖拽 Excel 文件到此处</div>
-        <div class="upload-hint">支持从各上游系统导出的案件列表，自动识别列名映射并标准化入库</div>
+        <div class="upload-title">📊 Excel 批量导入</div>
+        <div class="upload-hint">点击上传或拖拽案件列表 Excel 文件，自动识别列名映射并批量入库</div>
         <div class="upload-formats"><span class="format-badge">.xlsx</span><span class="format-badge">.xls</span><span class="format-badge">.csv</span></div>
         <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
+      </div>
+      <!-- 方式 B: AI 文字解析 -->
+      <div style="margin-top:16px;padding:16px;border:1px dashed var(--gold);border-radius:var(--radius-lg);background:#fffbf0;">
+        <div style="font-size:14px;font-weight:700;color:var(--navy-900);margin-bottom:8px;">🤖 AI 文字解析录入</div>
+        <textarea id="textInput" placeholder="输入一段案件描述，AI 自动识别当事人、纠纷类型、金额、区域等字段，确认后写入数据库...&#10;&#10;示例：2025年6月，枸杞乡干斜村村民张阿义与邻居李四因宅基地界限发生争执，后升级为肢体冲突，涉及赔偿金额 2.5 万元。经村调委会调解未果，上报至乡镇综治中心。" style="width:100%;height:100px;border:1px solid #ddd;border-radius:6px;padding:10px;font-size:14px;resize:vertical;font-family:inherit;"></textarea>
+        <button class="btn btn-primary" onclick="parseTextInput()" style="margin-top:8px;">🤖 AI 智能解析</button>
+        <span id="parseStatus" style="margin-left:12px;font-size:13px;color:var(--gray-400);display:none;"></span>
+      </div>
+      <!-- 解析结果预览 -->
+      <div id="parsePreview" style="display:none;margin-top:16px;padding:16px;background:#f0fdf4;border-radius:var(--radius-lg);border:1px solid #86efac;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:10px;">✅ AI 解析结果 <span id="parseBackend" style="font-weight:400;font-size:12px;color:var(--gray-400);"></span></div>
+        <div id="parseFields" style="font-size:13px;line-height:1.8;"></div>
+        <button class="btn btn-primary" onclick="confirmParseImport()" style="margin-top:10px;">✅ 确认并导入数据库</button>
+        <span style="margin-left:8px;font-size:12px;color:var(--gray-400);">AI 已自动识别字段，确认无误即可入库</span>
       </div>
       <div class="import-summary" id="importSummary">
         <div class="import-stats">
@@ -284,6 +299,6 @@
 </div>
 
 <script src="/static/js/cockpit.js?v=5"></script>
-<script src="/static/js/demo.js?v=6"></script>
+<script src="/static/js/demo.js?v=7"></script>
 </body>
 </html>

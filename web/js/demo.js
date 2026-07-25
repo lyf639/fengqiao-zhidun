@@ -5,6 +5,7 @@
 //
 // 数据流：
 //   拖入Excel → SheetJS解析 → POST /api/import → MySQL入库
+//   文字输入 → POST /api/parse-text → AI解析 → 确认 → MySQL入库
 //   → POST /api/dedup → 去重比对+AI语义 → 渲染结果
 //   → POST /api/alert → 规则引擎扫描 → 红橙黄预警
 //   → 展示处置跟进时间轴
@@ -76,6 +77,58 @@ function handleFile(e) {
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+// ===== 文字 AI 解析 =====
+let parsedCase = null;  // 存放 AI 解析结果
+
+async function parseTextInput() {
+  const text = document.getElementById('textInput').value.trim();
+  if (text.length < 10) { alert('请输入至少 10 个字的案件描述'); return; }
+
+  const status = document.getElementById('parseStatus');
+  status.style.display = 'inline'; status.textContent = '⏳ AI 正在解析...';
+
+  try {
+    const resp = await fetch(API_BASE + '/api/parse-text', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text })
+    });
+    const data = await resp.json();
+    if (data.fields && Object.keys(data.fields).length > 0) {
+      parsedCase = data.fields;
+      document.getElementById('parseBackend').textContent =
+        `（引擎: ${data.backend} · 置信度: ${Math.round(data.confidence * 100)}%）`;
+      const f = data.fields;
+      document.getElementById('parseFields').innerHTML =
+        `<table style="width:100%;font-size:13px;border-collapse:collapse;">` +
+        `<tr><td style="padding:4px 8px;"><b>当事人</b></td><td>${f.parties || '(未识别)'}</td></tr>` +
+        `<tr><td style="padding:4px 8px;"><b>纠纷类型</b></td><td>${f.dispute_type || '(未识别)'}</td></tr>` +
+        `<tr><td style="padding:4px 8px;"><b>区域</b></td><td>${f.district || '(未识别)'}</td></tr>` +
+        `<tr><td style="padding:4px 8px;"><b>金额</b></td><td>¥${(f.amount || 0).toLocaleString()}</td></tr>` +
+        `<tr><td style="padding:4px 8px;"><b>难度</b></td><td>${f.difficulty || '简单纠纷'}</td></tr>` +
+        `<tr><td style="padding:4px 8px;"><b>摘要</b></td><td>${(f.description || '').substring(0, 100)}</td></tr>` +
+        `</table>`;
+      document.getElementById('parsePreview').style.display = 'block';
+      status.textContent = '✅ 解析完成';
+    } else {
+      status.textContent = '⚠ AI 未能识别有效字段，请补充信息后重试';
+    }
+  } catch (e) {
+    status.textContent = '❌ 解析失败，请检查后端服务';
+  }
+}
+
+function confirmParseImport() {
+  if (!parsedCase) { alert('请先完成 AI 解析'); return; }
+  importedData = [parsedCase];
+  document.getElementById('importTotal').textContent = '1';
+  document.getElementById('importSuccess').textContent = '1';
+  document.getElementById('importMatched').textContent = '1';
+  document.getElementById('importSummary').classList.add('show');
+  document.getElementById('btnContinue1').disabled = false;
+  document.getElementById('parsePreview').style.display = 'none';
+  alert('案件已准备就绪，点击"确认导入·进入去重"继续');
 }
 
 function processImport(raw) {
