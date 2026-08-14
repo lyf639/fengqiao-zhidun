@@ -43,7 +43,11 @@ def ai_similarity(text_a: str, text_b: str) -> dict:
             pass
     # 回退到本地直接调用
     from ai_service import semantic_similarity
-    return {'score': semantic_similarity(text_a, text_b), 'backend': 'local_fallback'}
+    result = semantic_similarity(
+        {'description': text_a, 'dispute_type': ''},
+        {'description': text_b, 'dispute_type': ''},
+    )
+    return {'score': float(result.get('score', 0)), 'backend': result.get('backend', 'local_fallback')}
 
 
 def ai_dedup(batch: str, case_ids: list, progress_callback=None) -> dict:
@@ -71,11 +75,12 @@ def ai_dedup(batch: str, case_ids: list, progress_callback=None) -> dict:
     return task_dedup_batch({'batch': batch, 'case_ids': case_ids}, 'local')
 
 
-def ai_report(report_type: str, year: int = None, period: int = None) -> dict:
-    """调用 AI 微服务生成报告"""
+def ai_report(report_type: str, year: int = None, month: int = None, quarter: int = None) -> dict:
+    """调用 AI 微服务生成报告（自动回退本地）"""
     stub = _get_stub()
     if stub:
         try:
+            period = month if report_type == 'monthly' else (quarter if report_type == 'quarterly' else 0)
             req = fengqiao_pb2.ReportRequest(report_type=report_type, year=year or 0, period=period or 0)
             resp = stub.GenerateReport(req, timeout=GRPC_TIMEOUT)
             if resp.success:
@@ -85,6 +90,10 @@ def ai_report(report_type: str, year: int = None, period: int = None) -> dict:
             pass
 
     from report_generator import generate_report
+    if report_type == 'monthly':
+        return generate_report(period=report_type, year=year, month=month)
+    if report_type == 'quarterly':
+        return generate_report(period=report_type, year=year, quarter=quarter)
     return generate_report(period=report_type, year=year)
 
 

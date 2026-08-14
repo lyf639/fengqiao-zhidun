@@ -19,6 +19,7 @@
                                       └── 规则引擎
 """
 import os, sys, json, time, grpc, threading
+from datetime import datetime
 from concurrent import futures
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -127,11 +128,20 @@ class SemanticServiceImpl(fengqiao_pb2_grpc.SemanticServiceServicer):
     def GenerateReport(self, request, context):
         try:
             # generate_report(period, year, month=None, quarter=None)
+            # monthly 必须传 month，quarterly 必须传 quarter，否则报 invalid period
+            report_type = request.report_type
+            year = request.year if request.year else None
+            month = None
+            quarter = None
+            if report_type == 'monthly':
+                month = request.period if request.period else datetime.now().month
+            elif report_type == 'quarterly':
+                quarter = request.period if request.period else (datetime.now().month - 1) // 3 + 1
             result = gen_report(
-                period=request.report_type,
-                year=request.year if request.year else None,
-                month=None,
-                quarter=None,
+                period=report_type,
+                year=year if year else datetime.now().year,
+                month=month,
+                quarter=quarter,
             )
             return fengqiao_pb2.ReportResponse(
                 success=True,

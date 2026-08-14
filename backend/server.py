@@ -52,7 +52,7 @@ from models import (
     get_session, init_db,
 )
 from ai_service import semantic_similarity, field_scores, parse_case_text
-from auth import login as auth_login, verify_token, seed_default_user
+from auth import login as auth_login, verify_token, seed_default_user, decode_token
 from permissions import seed_rbac, require_perm, require_role, check_perm
 from tenant import get_tenant_context, list_tenants
 from tasks import start_worker, enqueue, get_status as task_status
@@ -64,7 +64,7 @@ from metrics import cases_total, alerts_total, dedup_total, ai_call_total, impor
 from rate_limiter import rate_limit
 from circuit_breaker import all_status as breaker_status
 from websocket import register as ws_register, start_feed_poller
-from grpc_client import ai_health
+from grpc_client import ai_health, ai_similarity, ai_dedup, ai_report
 from report_generator import generate_report
 from admin_api import (
     list_cases as admin_list_cases, get_case, create_case, update_case, delete_case,
@@ -294,6 +294,13 @@ def import_cases(request: Request, req: ImportRequest):
     同时更新 Redis 缓存计数和实时动态流。
     """
     batch_id = datetime.now().strftime('%Y%m%d%H%M%S') + '_' + uuid.uuid4().hex[:8]
+    # 多租户：优先从 JWT 提取租户，未登录（驾驶舱直连）默认租户 1（枸杞乡）
+    tenant_id = 1
+    auth = request.headers.get('Authorization', '')
+    if auth.startswith('Bearer '):
+        payload = decode_token(auth[7:])
+        if payload and payload.get('role') != 'super_admin' and payload.get('tenant_id'):
+            tenant_id = payload['tenant_id']
     session = get_session()
     inserted, skipped = 0, 0
 
@@ -304,7 +311,7 @@ def import_cases(request: Request, req: ImportRequest):
             mapped = {FIELD_MAP.get(k, k): v for k, v in d.items()}
 
             case = Case(
-                tenant_id=1,  # 默认租户（枸杞乡），多租户模式下从 JWT 提取
+                tenant_id=tenant_id,
                 case_code=mapped.get('case_code') or f'AUTO_{uuid.uuid4().hex[:12].upper()}',
                 agreement_type=mapped.get('agreement_type', ''),
                 case_source=mapped.get('case_source', ''),
@@ -409,8 +416,12 @@ def run_dedup(req: DedupRequest):
                         'dispute_type': m.dispute_type or '',
                         'description': m.description or '',
                     }
-                    ai_result = semantic_similarity(new_dict, match_dict)
-                    score_semantic = ai_result['score']
+                    # 走 gRPC AI 微服务（自动回退本地）
+                    ai_result = ai_similarity(
+                        f"{new_dict.get('description','')} {new_dict.get('dispute_type','')}",
+                        f"{match_dict.get('description','')} {match_dict.get('dispute_type','')}",
+                    )
+                    score_semantic = float(ai_result.get('score', 0))
                     # 逐字段实际比对 phone/address/name，不再硬编码满分
                     f_scores = field_scores(new_dict, match_dict)
                     scores = {'phone': f_scores['phone'], 'address': f_scores['address'], 'semantic': score_semantic, 'name': f_scores['name']}
@@ -459,12 +470,13 @@ def run_dedup(req: DedupRequest):
 # ==================== 去重确认 ====================
 
 @app.post('/api/dedup/confirm', tags=['去重'])
-def confirm_dedup(data: dict):
+def confirm_dedup(request: Request, data: dict):
     """
-    人工确认去重结果，闭环"推送人工确认"流程。
+    人工确认去重结果，闭环"推送人工确认"流程（需登录 + dedup:manage 权限）。
     case_id: 案件 ID
     decision: 'duplicate'（确认重复）/ 'independent'（判定独立）
     """
+    check_perm(request, 'dedup:manage')
     case_id = data.get('case_id')
     decision = data.get('decision', '')
     if not case_id:
@@ -580,12 +592,12 @@ class ReportRequest(BaseModel):
 @app.post('/api/report/generate', tags=['智能报告'])
 def generate_ai_report(req: ReportRequest):
     """
-    AI 分析报告生成
+    AI 分析报告生成（走 gRPC AI 微服务，自动回退本地）
 
     根据选定时间段（月度/季度/年度），自动统计案件数据并调用 DeepSeek 生成专业分析报告，
     包含总体态势、重点分析、工作建议三部分。
     """
-    result = generate_report(req.period, req.year, req.month, req.quarter)
+    result = ai_report(req.period, req.year, req.month if req.month else None, req.quarter if req.quarter else None)
     if 'error' in result:
         raise HTTPException(400, result['error'])
     return result

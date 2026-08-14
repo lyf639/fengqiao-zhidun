@@ -309,7 +309,7 @@ def parse_case_text(text: str) -> dict:
 
 
 def _deepseek_parse(text: str) -> dict:
-    """DeepSeek API 解析"""
+    """DeepSeek API 解析（带关键字段校验，缺失时回退）"""
     try:
         resp = requests.post(
             f'{DEEPSEEK_BASE_URL}/chat/completions',
@@ -323,7 +323,17 @@ def _deepseek_parse(text: str) -> dict:
             raw = data['choices'][0]['message']['content'].strip()
             start, end = raw.find('{'), raw.rfind('}') + 1
             if start >= 0 and end > start:
-                return {'fields': json.loads(raw[start:end]), 'confidence': 0.9, 'backend': 'deepseek'}
+                fields = json.loads(raw[start:end])
+                # 关键字段校验：当事人/类型/区域至少两个非空才算解析成功
+                critical = [str(fields.get('parties', '')), str(fields.get('dispute_type', '')),
+                            str(fields.get('district', ''))]
+                filled = sum(1 for c in critical if c.strip() and c.strip() != 'None')
+                if filled >= 2:
+                    return {'fields': fields, 'confidence': 0.9, 'backend': 'deepseek'}
+                # 关键字段缺失 → 降级到本地规则补全
+                regex = _regex_parse(text)
+                merged = {**regex['fields'], **{k: v for k, v in fields.items() if v}}
+                return {'fields': merged, 'confidence': 0.6, 'backend': 'deepseek+regex'}
         return _ollama_parse(text) if OLLAMA_HOST else _regex_parse(text)
     except Exception:
         return _ollama_parse(text) if OLLAMA_HOST else _regex_parse(text)
