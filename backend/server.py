@@ -374,12 +374,23 @@ def run_dedup(req: DedupRequest):
             new_case = session.query(Case).get(cid)
             if not new_case: continue
 
+            # 候选集：同区域 OR 同当事人（含同批次），先按电话/姓名/区域字段得分预筛排序
+            from sqlalchemy import or_
+            first_name = (new_case.parties or '').split(',')[0].strip()
             matches = session.query(Case).filter(
                 Case.id != cid, Case.dedup_status != 3,
-                Case.district == new_case.district,
-                Case.dispute_type == new_case.dispute_type,
                 Case.parties.isnot(None), Case.parties != '',
-            ).limit(5).all()
+                or_(
+                    Case.district == new_case.district,
+                    Case.parties.like(f'%{first_name}%'),
+                ),
+            ).all()
+            # 按字段得分预排序，取最相似的 10 条进入 AI 语义比对
+            matches.sort(key=lambda m: sum(field_scores(
+                {'parties': new_case.parties or '', 'district': new_case.district or '', 'dispute_type': new_case.dispute_type or ''},
+                {'parties': m.parties or '', 'district': m.district or '', 'dispute_type': m.dispute_type or ''}
+            ).values()), reverse=True)
+            matches = matches[:10]
 
             if matches:
                 # 使用 AI 计算语义相似度（自动回退到规则匹配）

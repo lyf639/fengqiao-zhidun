@@ -120,19 +120,39 @@ def task_dedup_batch(params: dict, task_id: str) -> dict:
 
     session = get_session()
     matches = []
+    results = []
     try:
         new_cases = session.query(Case).filter(Case.import_batch == batch).all()
         total = len(new_cases)
         for idx, new_case in enumerate(new_cases):
-            old_cases = session.query(Case).filter(Case.id.notin_([c.id for c in new_cases])).all()
-            for old_case in old_cases:
-                a = {c.name: getattr(new_case, c.name) for c in Case.__table__.columns}
-                b = {c.name: getattr(old_case, c.name) for c in Case.__table__.columns}
-                scores = field_scores(a, b)
+            # 候选：排除自己即可，同批次案件也参与比对（演示场景正是同批次重复登记）
+            # 先做字段级预筛（零 AI 成本），只有电话/区域/姓名得分高的候选才调 AI 语义
+            new_dict = {
+                'parties': new_case.parties or '',
+                'district': new_case.district or '',
+                'dispute_type': new_case.dispute_type or '',
+                'description': new_case.description or '',
+            }
+            candidates = []
+            for old_case in session.query(Case).filter(Case.id != new_case.id).all():
+                old_dict = {
+                    'parties': old_case.parties or '',
+                    'district': old_case.district or '',
+                    'dispute_type': old_case.dispute_type or '',
+                    'description': old_case.description or '',
+                }
+                f = field_scores(new_dict, old_dict)
+                pre = f['phone'] + f['address'] + f['name']
+                if pre >= 30:  # 字段分足够高才进入 AI 语义比对
+                    candidates.append((old_case, old_dict, f, pre))
+            candidates.sort(key=lambda x: x[3], reverse=True)
+            candidates = candidates[:5]
+
+            for old_case, old_dict, f, pre in candidates:
                 semantic = 0
                 try:
-                    a_text = f"{a.get('description','')} {a.get('dispute_type','')}"
-                    b_text = f"{b.get('description','')} {b.get('dispute_type','')}"
+                    a_text = f"{new_dict['description']} {new_dict['dispute_type']}"
+                    b_text = f"{old_dict['description']} {old_dict['dispute_type']}"
                     if a_text.strip() and b_text.strip():
                         sim = semantic_similarity(
                             {'description': a_text, 'dispute_type': ''},
@@ -141,16 +161,21 @@ def task_dedup_batch(params: dict, task_id: str) -> dict:
                         semantic = max(0, min(20, int(sim.get('score', 0))))
                 except:
                     pass
-                total_score = scores['phone'] + scores['address'] + semantic + scores['name']
+                total_score = f['phone'] + f['address'] + semantic + f['name']
                 if total_score >= 85:
                     session.add(DedupRecord(case_id=new_case.id, matched_case_id=old_case.id,
-                        score_phone=scores['phone'], score_address=scores['address'],
-                        score_semantic=semantic, score_name=scores['name'], total_score=total_score))
+                        score_phone=f['phone'], score_address=f['address'],
+                        score_semantic=semantic, score_name=f['name'], total_score=total_score))
                     new_case.dedup_status = 2
                     matches.append({'case_id': new_case.id, 'matched': old_case.id, 'score': total_score})
+                    results.append({
+                        'case_id': new_case.id, 'match_count': 1, 'total_score': total_score,
+                        'ai_backend': 'async', 'ai_reason': '字段+AI 语义综合判定',
+                    })
             update_status(task_id, 'running', progress=10 + int(80 * (idx + 1) / total))
         session.commit()
-        return {'success': True, 'matches': len(matches), 'total': total, 'details': matches[:20]}
+        return {'success': True, 'matches': len(matches), 'total': total,
+                'results': results, 'details': matches[:20]}
     except Exception as e:
         session.rollback()
         raise
