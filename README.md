@@ -172,7 +172,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **gRPC 微服务架构**：AI 分析引擎独立为 `ai_server.py`（gRPC :50051），主服务通过 `grpc_client.py`（protocol buffer + stub）调用，支持流式进度返回。主服务与 AI 服务解耦部署，AI 不可用时自动回退本地执行，零感知切换。`proto/fengqiao.proto` 定义了全部 RPC 接口规范。
 
-- **WebSocket 实时推送**：`websocket.py` 实现多频道广播（`cockpit:feed` 动态流、`cockpit:dashboard` 仪表盘、`task:{id}` 任务进度），Redis Pub/Sub + asyncio 异步轮询驱动，前端断线自动重连（3s），驾驶舱数据从定时轮询升级为事件驱动实时更新。
+- **WebSocket 实时推送**：`websocket.py` 实现多频道广播（`cockpit:feed` 动态流、`cockpit:dashboard` 仪表盘、`task:{id}` 任务进度），基于 Redis List 消息队列 + asyncio 异步轮询驱动，前端断线自动重连（3s），驾驶舱数据从定时轮询升级为事件驱动实时更新。
 
 - **模块化前端架构**：CSS 独立为 `style.css`（281 行），JavaScript 按职责拆分为 `cockpit.js`（驾驶舱）和 `demo.js`（四步流程），HTML 精简为 302 行纯结构骨架。代码注释覆盖率超过 90%，每个模块顶部均有职责说明和调用关系图。
 

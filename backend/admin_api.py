@@ -20,6 +20,13 @@ from models import (
     AuditLog, get_session,
 )
 
+
+def _write_audit(session, target_type: str, target_id: int, action: str, detail: dict):
+    """写入审计日志（与业务操作同一事务提交，保证全链路可追溯）"""
+    session.add(AuditLog(target_type=target_type, target_id=target_id,
+                         action=action, detail=detail))
+
+
 # ==================== 案件 CRUD ====================
 
 def list_cases(page=1, page_size=20, district='', dispute_type='', keyword='', tenant_id=None):
@@ -78,6 +85,7 @@ def create_case(data: dict, tenant_id: int = 1):
         )
         session.add(c)
         session.flush()
+        _write_audit(session, 'case', c.id, 'create', {'case_code': c.case_code})
         session.commit()
         return {'id': c.id}
     except Exception as e:
@@ -101,6 +109,7 @@ def update_case(case_id: int, data: dict):
                 setattr(c, k, data[k])
         if 'amount' in data:
             c.amount = float(data['amount'] or 0)
+        _write_audit(session, 'case', case_id, 'update', {k: data[k] for k in data if k in updatable or k == 'amount'})
         session.commit()
         return _case_to_dict(c)
     except Exception as e:
@@ -113,6 +122,9 @@ def update_case(case_id: int, data: dict):
 def delete_case(case_id: int):
     session = get_session()
     try:
+        c = session.query(Case).get(case_id)
+        if c:
+            _write_audit(session, 'case', case_id, 'delete', {'case_code': c.case_code})
         session.query(Case).filter(Case.id == case_id).delete()
         session.commit()
         return True
@@ -218,6 +230,7 @@ def create_person(data: dict, tenant_id: int = 1):
         )
         session.add(p)
         session.flush()
+        _write_audit(session, 'person', p.id, 'create', {'name': p.name})
         session.commit()
         return {'id': p.id}
     except Exception as e:
@@ -234,6 +247,7 @@ def update_person(pid: int, data: dict):
         if not p: return None
         for k in ['name','person_type','risk_level','departments','district','phone','remark','status']:
             if k in data: setattr(p, k, data[k])
+        _write_audit(session, 'person', pid, 'update', data)
         session.commit()
         return {'id': p.id}
     except Exception as e:
@@ -246,6 +260,9 @@ def update_person(pid: int, data: dict):
 def delete_person(pid: int):
     session = get_session()
     try:
+        p = session.query(PersonProfile).get(pid)
+        if p:
+            _write_audit(session, 'person', pid, 'delete', {'name': p.name})
         session.query(FollowUpRecord).filter(FollowUpRecord.person_id == pid).delete()
         session.query(PersonProfile).filter(PersonProfile.id == pid).delete()
         session.commit()
