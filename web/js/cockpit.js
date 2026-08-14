@@ -57,20 +57,27 @@ function animateCounters() {
 }
 
 // ===== Chart.js 预警柱状图 =====
-// 按乡镇展示红/橙/黄预警数量（堆叠柱状图）
+// 按乡镇展示红/橙/黄预警数量（数据来自 /api/stats 实时统计）
 let miniChart = null;
-function drawMiniChart() {
+async function drawMiniChart() {
   const c = document.getElementById('chartMini');
   if (!c) return;
+  let stats = null;
+  try {
+    const resp = await fetch(API_BASE + '/api/stats');
+    stats = await resp.json();
+  } catch(e) {}
+  const chartData = stats && stats.chart ? stats.chart :
+    { labels: ['枸杞乡'], red: [0], orange: [0], yellow: [0] };
   if (miniChart) miniChart.destroy();
   miniChart = new Chart(c, {
     type: 'bar',
     data: {
-      labels: ['菜园镇','五龙乡','嵊山镇','洋山镇','枸杞乡'],
+      labels: chartData.labels,
       datasets: [
-        { label: '红色', data: [1,0,0,0,1], backgroundColor: '#C41E3A', borderRadius: 2 },
-        { label: '橙色', data: [2,1,1,1,2], backgroundColor: '#E67E22', borderRadius: 2 },
-        { label: '黄色', data: [5,3,2,2,2], backgroundColor: '#D4A83A', borderRadius: 2 },
+        { label: '红色', data: chartData.red, backgroundColor: '#C41E3A', borderRadius: 2 },
+        { label: '橙色', data: chartData.orange, backgroundColor: '#E67E22', borderRadius: 2 },
+        { label: '黄色', data: chartData.yellow, backgroundColor: '#D4A83A', borderRadius: 2 },
       ]
     },
     options: {
@@ -79,6 +86,16 @@ function drawMiniChart() {
       scales: { x: { stacked: true }, y: { stacked: true, ticks: { stepSize: 2 } } }
     }
   });
+
+  // 更新预警概览数字（红/橙/黄三级计数）
+  if (stats) {
+    document.querySelectorAll('.am-count').forEach(el => {
+      const kind = el.dataset.kind;
+      if (kind === 'red' && stats.red_count !== undefined) el.textContent = stats.red_count;
+      if (kind === 'orange' && stats.orange_count !== undefined) el.textContent = stats.orange_count;
+      if (kind === 'yellow' && stats.yellow_count !== undefined) el.textContent = stats.yellow_count;
+    });
+  }
 }
 
 // ===== 实时动态流 =====

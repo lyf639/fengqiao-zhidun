@@ -134,7 +134,11 @@ def task_dedup_batch(params: dict, task_id: str) -> dict:
                     a_text = f"{a.get('description','')} {a.get('dispute_type','')}"
                     b_text = f"{b.get('description','')} {b.get('dispute_type','')}"
                     if a_text.strip() and b_text.strip():
-                        semantic = max(0, min(20, int(semantic_similarity(a_text, b_text) * 20)))
+                        sim = semantic_similarity(
+                            {'description': a_text, 'dispute_type': ''},
+                            {'description': b_text, 'dispute_type': ''},
+                        )
+                        semantic = max(0, min(20, int(sim.get('score', 0))))
                 except:
                     pass
                 total_score = scores['phone'] + scores['address'] + semantic + scores['name']

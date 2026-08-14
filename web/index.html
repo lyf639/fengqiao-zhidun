@@ -95,26 +95,22 @@
     <div class="dash-panel">
       <div class="dp-title">实时动态</div>
       <ul class="live-feed" id="liveFeed">
-        <li><span class="lf-dot green"></span><span class="lf-text">菜园镇 · 邻里纠纷调解成功 · 赔偿1500元</span><span class="lf-time">2分钟前</span></li>
-        <li><span class="lf-dot orange"></span><span class="lf-text">枸杞乡 · 损害赔偿纠纷 · 涉及金额¥230,000</span><span class="lf-time">15分钟前</span></li>
-        <li><span class="lf-dot red"></span><span class="lf-text">菜园镇 · 跨4渠道关联触发红色预警</span><span class="lf-time">28分钟前</span></li>
-        <li><span class="lf-dot green"></span><span class="lf-text">嵊山镇 · 海事渔事纠纷调解成功</span><span class="lf-time">1小时前</span></li>
-        <li><span class="lf-dot orange"></span><span class="lf-text">五龙乡 · 随访到期提醒：王**仅剩3天</span><span class="lf-time">2小时前</span></li>
+        <li class="lf-empty">暂无动态，数据导入后将实时展示</li>
       </ul>
     </div>
     <div class="dash-panel">
       <div class="dp-title">今日预警概览</div>
       <div class="alert-mini-row red">
         <span>🔴 红色预警</span>
-        <span class="am-count">2</span>
+        <span class="am-count" data-kind="red">0</span>
       </div>
       <div class="alert-mini-row orange">
         <span>🟠 橙色预警</span>
-        <span class="am-count">7</span>
+        <span class="am-count" data-kind="orange">0</span>
       </div>
       <div class="alert-mini-row gold">
         <span>🟡 黄色预警</span>
-        <span class="am-count">14</span>
+        <span class="am-count" data-kind="yellow">0</span>
       </div>
       <div style="margin-top:16px;">
         <canvas id="chartMini" height="160"></canvas>
@@ -267,19 +263,19 @@
       <div class="step-title">处置跟进 · 闭环归档</div>
       <div class="step-subtitle">指派责任人、跟踪处置进展、自动生成化解档案</div>
       <div class="timeline">
-        <div class="timeline-item completed"><div class="timeline-date">2026-07-02 15:30</div><div class="timeline-content">Excel 一键导入 27 条案件，系统自动解析并标准化入库</div></div>
-        <div class="timeline-item completed"><div class="timeline-date">2026-07-02 15:30</div><div class="timeline-content">智能去重完成，识别 5 条疑似重复，有效案件 22 条</div></div>
-        <div class="timeline-item completed"><div class="timeline-date">2026-07-02 15:31</div><div class="timeline-content">风险预警触发：<span class="tag tag-red">红色 2 件</span> <span class="tag tag-orange">橙色 5 件</span></div></div>
+        <div class="timeline-item completed"><div class="timeline-date" id="tl1Date">--</div><div class="timeline-content" id="tl1Text">Excel 一键导入，系统自动解析并标准化入库</div></div>
+        <div class="timeline-item completed"><div class="timeline-date" id="tl2Date">--</div><div class="timeline-content" id="tl2Text">智能去重完成</div></div>
+        <div class="timeline-item completed"><div class="timeline-date" id="tl3Date">--</div><div class="timeline-content" id="tl3Text">风险预警触发</div></div>
         <div class="timeline-item active"><div class="timeline-date">当前 · 待处置</div><div class="timeline-content"><strong>← 当前节点：</strong>等待指派责任人并跟进处置</div></div>
       </div>
       <div class="confirm-card" style="margin-top:24px;">
-        <div class="confirm-title">📝 处置方案 · 红色预警 #1：沈君秋 vs 蒋明（¥230,000）</div>
+        <div class="confirm-title" id="step4Title">📝 处置方案 · 红色预警案件</div>
         <div class="form-grid" style="margin-top:12px;">
-          <div class="form-group"><label>处置方式</label><select><option>上门调解</option><option>约谈双方</option><option selected>部门联动</option><option>法律途径</option></select></div>
-          <div class="form-group"><label>牵头单位</label><select><option>综治中心</option><option selected>司法所+派出所</option><option>法院</option></select></div>
-          <div class="form-group"><label>处置时限</label><input value="2026-07-05（3个工作日）"></div>
-          <div class="form-group"><label>责任人</label><input value="枸杞乡综治中心 · 刘主任"></div>
-          <div class="form-group full"><label>处置意见</label><textarea>该案涉及渔业生产事故赔偿，金额巨大。建议司法所牵头，联合派出所、渔业管理部门共同介入，先稳定双方情绪再就赔偿金额调解。</textarea></div>
+          <div class="form-group"><label>处置方式</label><select id="step4Method"><option>上门调解</option><option>约谈双方</option><option selected>部门联动</option><option>法律途径</option></select></div>
+          <div class="form-group"><label>牵头单位</label><select id="step4Dept"><option>综治中心</option><option selected>司法所+派出所</option><option>法院</option></select></div>
+          <div class="form-group"><label>处置时限</label><input id="step4Deadline" value="3 个工作日"></div>
+          <div class="form-group"><label>责任人</label><input id="step4Owner" value="待指派"></div>
+          <div class="form-group full"><label>处置意见</label><textarea id="step4Opinion">请根据案件实际情况填写处置意见，系统将自动跟踪处置进展。</textarea></div>
         </div>
       </div>
       <div class="btn-row"><button class="btn btn-primary" onclick="completeStep4()">✅ 提交处置方案 · 完成闭环</button></div>

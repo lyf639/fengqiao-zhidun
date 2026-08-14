@@ -206,13 +206,17 @@ def startup():
 
 @app.get('/api/dashboard', tags=['驾驶舱'])
 def get_dashboard():
-    """获取驾驶舱实时数据（来自 Redis 缓存）"""
-    return {
-        'total': int(r.hget('dashboard:total', 'value') or 0),
-        'dedup': int(r.hget('dashboard:dedup', 'value') or 0),
-        'alerts': int(r.hget('dashboard:alerts', 'value') or 0),
-        'resolved': int(r.hget('dashboard:resolved', 'value') or 0),
-    }
+    """获取驾驶舱实时数据（DB 实时统计，Redis 仅作缓存加速）"""
+    session = get_session()
+    try:
+        return {
+            'total': session.query(func.count(Case.id)).scalar() or 0,
+            'dedup': session.query(func.count(Case.id)).filter(Case.dedup_status >= 2).scalar() or 0,
+            'alerts': session.query(func.count(Case.id)).filter(Case.alert_level > 0).scalar() or 0,
+            'resolved': session.query(func.count(Case.id)).filter(Case.status >= 2).scalar() or 0,
+        }
+    finally:
+        session.close()
 
 
 @app.get('/api/feed', tags=['驾驶舱'])
@@ -224,13 +228,23 @@ def get_feed():
 
 @app.get('/api/stats', tags=['统计'])
 def get_stats():
-    """全量统计数据"""
+    """全量统计数据 + 预警按乡镇分布 + 预警概览"""
     session = get_session()
     try:
+        # 预警按乡镇分布（堆叠柱状图数据）
+        districts = session.query(Case.district).filter(Case.district != '').distinct().all()
+        districts = [d[0] for d in districts] or ['枸杞乡']
+        red, orange, yellow = [], [], []
+        for d in districts:
+            red.append(session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 3).scalar() or 0)
+            orange.append(session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 2).scalar() or 0)
+            yellow.append(session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 1).scalar() or 0)
         return {
             'total': session.query(func.count(Case.id)).scalar(),
             'duplicates': session.query(func.count(Case.id)).filter(Case.dedup_status >= 2).scalar(),
             'alerts': session.query(func.count(Case.id)).filter(Case.alert_level > 0).scalar(),
+            'red_count': sum(red), 'orange_count': sum(orange), 'yellow_count': sum(yellow),
+            'chart': {'labels': districts, 'red': red, 'orange': orange, 'yellow': yellow},
         }
     finally:
         session.close()
@@ -375,6 +389,8 @@ def run_dedup(req: DedupRequest):
                     'dispute_type': new_case.dispute_type or '',
                     'description': new_case.description or '',
                 }
+                best_score = 0
+                best_result = None
                 for m in matches:
                     match_dict = {
                         'parties': m.parties or '',
@@ -394,15 +410,24 @@ def run_dedup(req: DedupRequest):
                         score_semantic=score_semantic, score_name=scores['name'],
                         total_score=total,
                     ))
-                session.query(Case).filter(Case.id == cid).update({'dedup_status': 2})
-                result = {
-                    'case_id': cid, 'match_count': len(matches), 'total_score': total,
-                    'ai_backend': ai_result.get('backend', 'mock'),
-                    'ai_reason': ai_result.get('reason', ''),
-                }
-                dup_results.append(result); total_dup += 1
-                r.setex(cache_key, ttl_jitter(3600), json.dumps(result))
+                    if total > best_score:
+                        best_score = total
+                        best_result = {
+                            'case_id': cid, 'match_count': 1, 'total_score': total,
+                            'ai_backend': ai_result.get('backend', 'mock'),
+                            'ai_reason': ai_result.get('reason', ''),
+                        }
+
+                # ≥85 分才判定疑似重复，否则标记为唯一案件
+                if best_score >= 85:
+                    session.query(Case).filter(Case.id == cid).update({'dedup_status': 2})
+                    dup_results.append(best_result); total_dup += 1
+                    r.setex(cache_key, ttl_jitter(3600), json.dumps(best_result))
+                else:
+                    session.query(Case).filter(Case.id == cid).update({'dedup_status': 1})
+                    r.setex(cache_key, ttl_jitter(3600), json.dumps({'case_id': cid, 'match_count': 0, 'total_score': best_score}))
             else:
+                # 无匹配记录，标记为唯一案件
                 session.query(Case).filter(Case.id == cid).update({'dedup_status': 1})
                 r.setex(cache_key, ttl_jitter(3600), json.dumps({'case_id': cid, 'match_count': 0, 'total_score': 0}))
 
@@ -413,6 +438,52 @@ def run_dedup(req: DedupRequest):
                   {'batch': req.batch, 'checked': len(req.case_ids), 'duplicates': total_dup})
 
         return {'success': True, 'checked': len(req.case_ids), 'duplicates': total_dup, 'results': dup_results}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(500, str(e))
+    finally:
+        session.close()
+
+
+# ==================== 去重确认 ====================
+
+@app.post('/api/dedup/confirm', tags=['去重'])
+def confirm_dedup(data: dict):
+    """
+    人工确认去重结果，闭环"推送人工确认"流程。
+    case_id: 案件 ID
+    decision: 'duplicate'（确认重复）/ 'independent'（判定独立）
+    """
+    case_id = data.get('case_id')
+    decision = data.get('decision', '')
+    if not case_id:
+        raise HTTPException(400, '缺少 case_id')
+    if decision not in ('duplicate', 'independent'):
+        raise HTTPException(400, 'decision 必须为 duplicate 或 independent')
+
+    session = get_session()
+    try:
+        case = session.query(Case).get(case_id)
+        if not case:
+            raise HTTPException(404, '案件不存在')
+
+        # 更新去重记录确认状态
+        records = session.query(DedupRecord).filter(DedupRecord.case_id == case_id).all()
+        confirm_val = 1 if decision == 'duplicate' else 2
+        for rec in records:
+            rec.is_confirmed = confirm_val
+            rec.confirmed_by = data.get('operator', '人工确认')
+            rec.confirmed_at = datetime.now()
+
+        # 更新案件去重状态：确认重复=3，判定独立=1
+        case.dedup_status = 3 if decision == 'duplicate' else 1
+        log_audit(session, 'case', case_id, 'dedup_confirm',
+                  {'decision': decision, 'operator': data.get('operator', '人工确认')})
+        session.commit()
+        return {'success': True, 'case_id': case_id, 'decision': decision,
+                'records_updated': len(records)}
+    except HTTPException:
+        raise
     except Exception as e:
         session.rollback()
         raise HTTPException(500, str(e))

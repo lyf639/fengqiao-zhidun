@@ -293,7 +293,27 @@ async function runAlertAnim() {
 }
 // ===== 第四步：处置跟进 =====
 // 时间轴展示全流程 + 处置方案表单 + 闭环归档
-function goToStep4() { showStep(4); }
+function goToStep4() {
+  showStep(4);
+  // 用本次会话真实数据填充时间轴
+  const now = new Date();
+  const t = n => { const d = new Date(now.getTime() - n*60000); return d.toLocaleString('zh-CN', { hour12: false }); };
+  if (importedData.length > 0) {
+    const t1 = document.getElementById('tl1Date');
+    if (t1) t1.textContent = t(3);
+    const tl1 = document.getElementById('tl1Text');
+    if (tl1) tl1.textContent = `Excel 一键导入 ${importedData.length} 条案件，系统自动解析并标准化入库`;
+  }
+  const t2 = document.getElementById('tl2Date');
+  if (t2) t2.textContent = t(2);
+  const tl2 = document.getElementById('tl2Text');
+  const dupCount = parseInt(document.getElementById('dedupSuspect')?.textContent || '0');
+  if (tl2) tl2.textContent = `智能去重完成，识别 ${dupCount} 条疑似重复`;
+  const t3 = document.getElementById('tl3Date');
+  if (t3) t3.textContent = t(1);
+  const tl3 = document.getElementById('tl3Text');
+  if (tl3) tl3.textContent = '风险预警触发，已推送至相关责任单位';
+}
 function completeStep4() { const r = document.getElementById('step4Result'); r.classList.add('show'); r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 // ===== 重置 =====
 // 清空所有状态，恢复到第一步

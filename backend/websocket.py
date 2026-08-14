@@ -67,13 +67,20 @@ async def _feed_poller():
                 if msg_id != last_id:
                     last_id = msg_id
                     await broadcast('cockpit:feed', item)
-                    await broadcast('cockpit:dashboard', {
-                        'type': 'dashboard_update',
-                        'total': int(r.hget('dashboard:total', 'value') or 0),
-                        'dedup': int(r.hget('dashboard:dedup', 'value') or 0),
-                        'alerts': int(r.hget('dashboard:alerts', 'value') or 0),
-                        'resolved': int(r.hget('dashboard:resolved', 'value') or 0),
-                    })
+                    # 驾驶舱计数从 DB 实时统计
+                    from models import Case, get_session
+                    from sqlalchemy import func
+                    s = get_session()
+                    try:
+                        await broadcast('cockpit:dashboard', {
+                            'type': 'dashboard_update',
+                            'total': s.query(func.count(Case.id)).scalar() or 0,
+                            'dedup': s.query(func.count(Case.id)).filter(Case.dedup_status >= 2).scalar() or 0,
+                            'alerts': s.query(func.count(Case.id)).filter(Case.alert_level > 0).scalar() or 0,
+                            'resolved': s.query(func.count(Case.id)).filter(Case.status >= 2).scalar() or 0,
+                        })
+                    finally:
+                        s.close()
         except Exception:
             pass
 
