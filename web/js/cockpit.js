@@ -18,13 +18,14 @@ function connectWS() {
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'dashboard_update') {
-        document.getElementById('counterTotal').textContent = msg.total;
-        document.getElementById('counterDedup').textContent = msg.dedup;
-        document.getElementById('counterAlerts').textContent = msg.alerts;
-        document.getElementById('counterResolved').textContent = msg.resolved;
-      } else if (msg.type === 'feed') {
-        const list = document.getElementById('feedList');
-        if (list) { list.innerHTML = '<div class="feed-item"><span class="feed-time">' + (msg.time || '') + '</span>' + (msg.text || '') + '</div>' + list.innerHTML; }
+        // 用 data-key 选择器更新四计数器
+        document.querySelectorAll('.counter').forEach(el => {
+          const key = el.dataset.key;
+          if (msg[key] !== undefined) { el.textContent = msg[key]; el.dataset.target = msg[key]; }
+        });
+      } else if (msg.msg || msg.type === 'info' || msg.type === 'alert') {
+        const list = document.getElementById('liveFeed');
+        if (list) { list.innerHTML = '<li class="feed-item"><span class="feed-time">' + (msg.time || '') + '</span>' + (msg.msg || '') + '</li>' + list.innerHTML; }
       }
     } catch(e) {}
   };

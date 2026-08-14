@@ -103,14 +103,17 @@ def init_cache():
 
 def push_feed(msg: str, feed_type: str = 'info'):
     """向驾驶舱实时动态流推送一条消息，保留最近 50 条"""
-    item = json.dumps({'msg': msg, 'type': feed_type, 'time': datetime.now().strftime('%H:%M:%S')},
-                       ensure_ascii=False)
+    item = json.dumps({'id': uuid.uuid4().hex, 'msg': msg, 'type': feed_type,
+                       'time': datetime.now().strftime('%H:%M:%S')},
+                      ensure_ascii=False)
     r.lpush('feed:list', item)
     r.ltrim('feed:list', 0, 49)
 
 
 def log_audit(session, target_type: str, target_id: int, action: str, detail: dict):
+    """写入审计日志并立即提交，确保红线数据落库"""
     session.add(AuditLog(target_type=target_type, target_id=target_id, action=action, detail=detail))
+    session.commit()
 
 
 # ==================== Schemas ====================
@@ -269,7 +272,7 @@ def api_parse_text(data: dict):
 
 @app.post('/api/import', tags=['导入'])
 @rate_limit('import')
-def import_cases(req: ImportRequest):
+def import_cases(request: Request, req: ImportRequest):
     """
     Excel 一键导入
 
@@ -287,6 +290,7 @@ def import_cases(req: ImportRequest):
             mapped = {FIELD_MAP.get(k, k): v for k, v in d.items()}
 
             case = Case(
+                tenant_id=1,  # 默认租户（枸杞乡），多租户模式下从 JWT 提取
                 case_code=mapped.get('case_code') or f'AUTO_{uuid.uuid4().hex[:12].upper()}',
                 agreement_type=mapped.get('agreement_type', ''),
                 case_source=mapped.get('case_source', ''),
@@ -509,7 +513,7 @@ def generate_ai_report(req: ReportRequest):
 
 @app.post('/api/auth/login', tags=['认证'])
 @rate_limit('strict')
-def api_login(data: dict):
+def api_login(request: Request, data: dict):
     """管理员登录，返回 JWT Token"""
     return auth_login(data.get('username', ''), data.get('password', ''))
 

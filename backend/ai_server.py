@@ -53,9 +53,13 @@ class SemanticServiceImpl(fengqiao_pb2_grpc.SemanticServiceServicer):
         )
 
     def ComputeSimilarity(self, request, context):
-        score = semantic_similarity(request.text_a, request.text_b)
+        # 前端传字符串文本，包成 dict 传给 semantic_similarity
+        result = semantic_similarity(
+            {'description': request.text_a, 'dispute_type': ''},
+            {'description': request.text_b, 'dispute_type': ''},
+        )
         return fengqiao_pb2.SimilarityResponse(
-            score=score, backend=AI_BACKEND
+            score=float(result.get('score', 0)), backend=result.get('backend', AI_BACKEND)
         )
 
     def BatchDedup(self, request, context):
@@ -117,10 +121,12 @@ class SemanticServiceImpl(fengqiao_pb2_grpc.SemanticServiceServicer):
 
     def GenerateReport(self, request, context):
         try:
+            # generate_report(period, year, month=None, quarter=None)
             result = gen_report(
-                report_type=request.report_type,
+                period=request.report_type,
                 year=request.year if request.year else None,
-                period=request.period if request.period else None,
+                month=None,
+                quarter=None,
             )
             return fengqiao_pb2.ReportResponse(
                 success=True,

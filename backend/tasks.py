@@ -45,16 +45,24 @@ def enqueue(task_name: str, params: dict = None) -> str:
     return task_id
 
 def get_status(task_id: str) -> dict:
-    """查询任务状态"""
+    """查询任务状态（兼容 decode_responses 字符串键）"""
     data = r.hgetall(f'task:{task_id}')
     if not data:
         return {'task_id': task_id, 'status': 'not_found'}
+    # fakeredis decode_responses=True 返回 str 键，真实 redis 返回 bytes 键，两者兼容
+    def _get(key: str, default: str = '') -> str:
+        v = data.get(key, default)
+        if v is None:
+            v = data.get(key.encode(), default)
+        if isinstance(v, bytes):
+            v = v.decode()
+        return v
     return {
         'task_id': task_id,
-        'status': data.get(b'status', b'').decode(),
-        'progress': int(data.get(b'progress', b'0')),
-        'result': data.get(b'result', b'').decode() or None,
-        'created_at': data.get(b'created_at', b'').decode(),
+        'status': _get('status', 'unknown'),
+        'progress': int(_get('progress', '0') or 0),
+        'result': _get('result', '') or None,
+        'created_at': _get('created_at', ''),
     }
 
 def update_status(task_id: str, status: str, progress: int = None, result: str = None):

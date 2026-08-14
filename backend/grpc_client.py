@@ -85,7 +85,7 @@ def ai_report(report_type: str, year: int = None, period: int = None) -> dict:
             pass
 
     from report_generator import generate_report
-    return generate_report(report_type, year, period)
+    return generate_report(period=report_type, year=year)
 
 
 def ai_health() -> dict:
