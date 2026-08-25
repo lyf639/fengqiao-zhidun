@@ -83,7 +83,10 @@ async function drawMiniChart() {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12, font: { size: 10 } } } },
-      scales: { x: { stacked: true }, y: { stacked: true, ticks: { stepSize: 2 } } }
+      scales: {
+        x: { stacked: true, ticks: { maxRotation: 0, autoSkip: false, font: { size: 10 } } },
+        y: { stacked: true, ticks: { stepSize: 2 } }
+      }
     }
   });
 

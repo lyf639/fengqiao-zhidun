@@ -1,14 +1,13 @@
-// 枫桥智盾 · 四步Demo流程
+// 枫桥智盾 · 三步Demo流程
 // ======================
-// 负责：Excel导入→智能去重→风险预警→处置跟进 完整闭环
+// 负责：Excel导入→智能去重→风险预警 完整闭环（预警确认后返回驾驶舱）
 // 依赖：SheetJS（Excel解析）、cockpit.js（API_BASE、enterDemo/backToCockpit）
 //
 // 数据流：
 //   拖入Excel → SheetJS解析 → POST /api/import → MySQL入库
 //   文字输入 → POST /api/parse-text → AI解析 → 确认 → MySQL入库
 //   → POST /api/dedup → 去重比对+AI语义 → 渲染结果
-//   → POST /api/alert → 规则引擎扫描 → 红橙黄预警
-//   → 展示处置跟进时间轴
+//   → POST /api/alert → 规则引擎扫描 → 红橙黄预警 → 确认后返回驾驶舱
 
 // ===== 进度条控制 =====
 // 顶部四步进度条，current=当前步，done=已完成
@@ -202,7 +201,7 @@ async function goToStep2() {
 
   // 4. 轮询任务进度
   let dedupData = null;
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 180; i++) {
     await new Promise(r => setTimeout(r, 1000));
     try {
       const pollResp = await fetch(API_BASE + '/api/tasks/' + taskId);
@@ -286,35 +285,14 @@ async function runAlertAnim() {
         <div class="result-box-header">🟠 橙色预警 — ${alertData.orange} 件需重点关注</div>
         <div class="result-box-body" style="font-size:13px;color:var(--gray-600);">识别出 ${alertData.orange} 件涉及金额较大且跨渠道的案件，已推送至相关乡镇综治中心。</div>
       </div>` : ''}
-      <div style="padding:16px 20px;background:var(--gold-pale);border-radius:var(--radius-lg);border-left:3px solid var(--gold);font-size:14px;"><strong>🔔 自动推送：</strong>预警信息已通过钉钉通知相关乡镇综治中心负责人。</div>
-      <div class="btn-row"><button class="btn btn-danger" onclick="goToStep4()">📋 进入处置跟进</button></div>
+      <div style="padding:20px 20px;background:#EEFAF3;border-radius:var(--radius-lg);border:1px solid #86efac;text-align:center;margin-top:4px;">
+        <div style="font-size:16px;font-weight:800;color:var(--green);margin-bottom:6px;">✅ 风险预警确认完成</div>
+        <div style="font-size:13px;color:var(--gray-600);margin-bottom:16px;">红色/橙色预警已确认，无后续处置跟进环节。全流程演示结束，可返回驾驶舱查看实时动态。</div>
+        <button class="btn btn-primary" onclick="backToCockpit()">🏠 返回驾驶舱</button>
+      </div>
     `;
   }
 }
-// ===== 第四步：处置跟进 =====
-// 时间轴展示全流程 + 处置方案表单 + 闭环归档
-function goToStep4() {
-  showStep(4);
-  // 用本次会话真实数据填充时间轴
-  const now = new Date();
-  const t = n => { const d = new Date(now.getTime() - n*60000); return d.toLocaleString('zh-CN', { hour12: false }); };
-  if (importedData.length > 0) {
-    const t1 = document.getElementById('tl1Date');
-    if (t1) t1.textContent = t(3);
-    const tl1 = document.getElementById('tl1Text');
-    if (tl1) tl1.textContent = `Excel 一键导入 ${importedData.length} 条案件，系统自动解析并标准化入库`;
-  }
-  const t2 = document.getElementById('tl2Date');
-  if (t2) t2.textContent = t(2);
-  const tl2 = document.getElementById('tl2Text');
-  const dupCount = parseInt(document.getElementById('dedupSuspect')?.textContent || '0');
-  if (tl2) tl2.textContent = `智能去重完成，识别 ${dupCount} 条疑似重复`;
-  const t3 = document.getElementById('tl3Date');
-  if (t3) t3.textContent = t(1);
-  const tl3 = document.getElementById('tl3Text');
-  if (tl3) tl3.textContent = '风险预警触发，已推送至相关责任单位';
-}
-function completeStep4() { const r = document.getElementById('step4Result'); r.classList.add('show'); r.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 // ===== 重置 =====
 // 清空所有状态，恢复到第一步
 function resetAll() {
@@ -329,5 +307,4 @@ function resetAll() {
   document.getElementById('alertLoading').style.display = 'block';
   document.getElementById('alertContent').style.display = 'none';
   document.getElementById('alertContent').innerHTML = '<div class="result-box danger show" style="margin-top:0;margin-bottom:20px;"><div class="result-box-header">🔴 红色预警 — 0 件高风险事件需立即处置</div><div class="result-box-body" style="font-size:13px;color:var(--gray-600);">系统正在扫描中...</div></div>';
-  document.getElementById('step4Result').classList.remove('show');
 }

@@ -12,7 +12,7 @@
 | ⚡ 实时推送 | WebSocket 多频道广播（仪表盘/动态流/任务进度）· 驾驶舱事件驱动 · 断线自动重连 |
 | 💾 数据架构 | MySQL 8.4 读写分离主从集群 · 15 张业务表完整 ORM 映射 · Redis 三级缓存防护 |
 | 🛡 高可用 | NGINX 多节点负载均衡 · Supervisor 进程守护 · 熔断器自动隔离故障 · 令牌桶限流 |
-| 📊 可观测 | Prometheus /metrics 端点 · 9 类业务+HTTP+系统指标 · Grafana 就绪 |
+| 📊 可观测 | Prometheus /metrics 端点 · 11 个业务+HTTP+系统指标 · 可接入 Grafana |
 
 ## 🚀 快速启动
 
@@ -40,7 +40,7 @@ docker-compose up -d                          # MySQL + API + 前端
 
 ### 数据库初始化
 
-确保 MySQL 8.4 服务已启动，创建数据库并导入（项目附带的数据库导出文件 `sql/fengqiao_zhidun_export.sql` 包含 15 张表结构与 42 条预置样本数据）：
+确保 MySQL 8.4 服务已启动，创建数据库并导入（项目附带的数据库导出文件 `sql/fengqiao_zhidun_export.sql` 包含 15 张表结构与 201 行预置样本数据，其中案件样本 41 条）：
 
 ```bash
 # 1. 创建数据库
@@ -128,7 +128,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 │  安全网关层    JWT 认证 · CORS 跨域 · 令牌桶限流  │
 ├─────────────────────────────────────────────────┤
 │  服务网关层    FastAPI + Pydantic + Swagger      │
-│              29+ RESTful 端点 · 自动文档生成     │
+│              35+ RESTful 端点 · 自动文档生成     │
 ├─────────────────────────────────────────────────┤
 │  业务逻辑层    SQLAlchemy 2.0 ORM · 15 张数据表   │
 │              外键约束 · 多对多关联 · 延迟加载     │
@@ -144,7 +144,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 ### 技术亮点
 
-- **四后端 AI 插件架构 · 云+端热切换**：系统支持四种 AI 后端——云端 DeepSeek-v4-pro、本地 Ollama 运行 DeepSeek-R1 蒸馏模型、本地 Sentence-Transformers 向量模型、规则引擎兜底。通过环境变量 `AI_BACKEND` 一键热切换，**无需重启服务、无需修改代码**。本地 Ollama 模式下，矛盾纠纷数据（含当事人姓名、联系电话、家庭住址等敏感信息）完全在政务专网内处理，**数据不出域、不经过互联网传输**，从根本上满足政法系统对数据安全的红线要求。云端 API 模式下，享受 DeepSeek-v4-pro 671B 参数顶级大模型的推理能力。两者之间秒级切换，开发环境与生产环境无缝衔接。任一后端不可用时自动降级至下一级，确保服务永不断线。
+- **四后端 AI 插件架构 · 云+端热切换**：系统支持四种 AI 后端——云端 DeepSeek-v4-pro、本地 Ollama 运行 DeepSeek-R1 蒸馏模型、本地 Sentence-Transformers 向量模型、规则引擎兜底。通过环境变量 `AI_BACKEND` 一键热切换，**无需重启服务、无需修改代码**。本地 Ollama 模式下，矛盾纠纷数据（含当事人姓名、联系电话、家庭住址等敏感信息）完全在政务专网内处理，**数据不出域、不经过互联网传输**，从根本上满足政法系统对数据安全的红线要求。云端 API 模式下，享受 DeepSeek-v4-pro 顶级大模型的推理能力。两者之间秒级切换，开发环境与生产环境无缝衔接。任一后端不可用时自动降级至下一级，确保服务永不断线。
 
 - **AI 智能分析报告引擎**：自动聚合全量案件数据，调用 DeepSeek 大模型生成三段式叙事分析报告（总体态势/重点分析/工作建议），覆盖月度/季度/年度三种周期。同样采用三级降级策略，AI 不可用时规则引擎自动生成结构化报告，保证功能完整性。
 
@@ -166,7 +166,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **MySQL 读写分离集群**：`db_router.py` 实现主从连接路由，Master 处理所有写入，Slave(s) 轮询负载均衡处理查询。单节点模式（无 Slave 配置）自动读写同库，集群模式（配置 `DB_SLAVE_HOSTS`）读写分离，任一从库不可用时自动回退到主库。配合 `deploy/nginx.conf` 实现 API 层反向代理与多节点负载均衡，任一服务节点故障不影响整体可用。
 
-- **全流程可追溯**：`audit_logs` 审计日志表以 JSON 格式记录每一次操作（导入/去重/预警/CRUD）的详细信息，配合 30+ 次高频原子化 Git 提交，满足算法可审计、内容可溯源的合规红线要求。
+- **全流程可追溯**：`audit_logs` 审计日志表以 JSON 格式记录每一次操作（导入/去重/预警/CRUD）的详细信息，配合 88 次高频原子化 Git 提交，满足算法可审计、内容可溯源的合规红线要求。
 
 - **Prometheus 监控 + 流量控制**：`metrics.py` 暴露 `/metrics` 端点，覆盖业务指标（案件/去重/预警/AI 调用次数、导入耗时）、HTTP 指标（请求计数+延时 Histogram）、系统指标（任务队列长度）。`rate_limiter.py` 基于 Redis 令牌桶实现分布式限流，预置 strict(30/min)/normal(100/min)/import(10/min)/ai(5/min) 四档策略，超限自动返回 429 + Retry-After 头。
 
@@ -174,7 +174,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 
 - **WebSocket 实时推送**：`websocket.py` 实现多频道广播（`cockpit:feed` 动态流、`cockpit:dashboard` 仪表盘、`task:{id}` 任务进度），基于 Redis List 消息队列 + asyncio 异步轮询驱动，前端断线自动重连（3s），驾驶舱数据从定时轮询升级为事件驱动实时更新。
 
-- **模块化前端架构**：CSS 独立为 `style.css`（281 行），JavaScript 按职责拆分为 `cockpit.js`（驾驶舱）和 `demo.js`（四步流程），HTML 精简为 302 行纯结构骨架。代码注释覆盖率超过 90%，每个模块顶部均有职责说明和调用关系图。
+- **模块化前端架构**：CSS 独立为 `style.css`（281 行），JavaScript 按职责拆分为 `cockpit.js`（驾驶舱）和 `demo.js`（四步流程），HTML 精简为 index.html（300 行）与 admin.html（332 行）纯结构骨架。代码注释覆盖率超过 90%，每个模块顶部均有职责说明和调用关系图。
 
 ## 🌐 部署架构
 
@@ -327,9 +327,9 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 │       ├── cockpit.js         驾驶舱逻辑 + WebSocket 实时推送
 │       └── demo.js            四步流程（导入/去重/预警/跟进）
 ├── backend/
-│   ├── server.py              FastAPI 主服务（29+ RESTful / gRPC 客户端 / WebSocket）
+│   ├── server.py              FastAPI 主服务（35+ RESTful / gRPC 客户端 / WebSocket）
 │   ├── ai_server.py           AI 微服务（gRPC :50051 · 去重/报告/语义）
-│   ├── models.py              ORM 模型层（17 表 · 完整关系映射）
+│   ├── models.py              ORM 模型层（15 表 · 完整关系映射）
 │   ├── ai_service.py          AI 语义服务（4 后端 · 自动降级）
 │   ├── report_generator.py    AI 分析报告引擎（三级降级）
 │   ├── admin_api.py           后台管理 CRUD 逻辑层
@@ -348,7 +348,7 @@ mysql -u root -p fengqiao_zhidun < sql/fengqiao_zhidun_export.sql
 ├── deploy/
 │   ├── nginx.conf             NGINX 负载均衡 + 反向代理
 │   └── supervisor.conf        进程守护（自动重启）
-├── sql/init.sql               数据库初始化（17 表 · 外键 · 索引）
+├── sql/init.sql               数据库初始化（7 张核心表，其余 8 表启动时自动创建）
 ├── Dockerfile                 Python 3.12-slim 镜像
 ├── docker-compose.yml         MySQL 8.4 + API 双容器编排
 ├── requirements.txt           依赖锁定版本
@@ -363,14 +363,19 @@ cp .env.example .env
 ```
 
 ```ini
-# AI 后端选择（四选一）
-AI_BACKEND=deepseek     # DeepSeek-v4-pro 云端大模型（需 API Key）
-AI_BACKEND=st           # 本地向量模型（Sentence-Transformers，数据不出域）
-AI_BACKEND=ollama       # 本地大模型（DeepSeek-R1 蒸馏版，纯离线）
-AI_BACKEND=mock         # 规则引擎（零依赖，兜底保障）
+# AI 后端选择（四选一，默认 ollama，与 .env.example 一致）
+AI_BACKEND=ollama      # 本地大模型（DeepSeek-R1 蒸馏版，纯离线）
+# AI_BACKEND=deepseek  # DeepSeek-v4-pro 云端大模型（需 API Key）
+# AI_BACKEND=st        # 本地向量模型（Sentence-Transformers，数据不出域）
+# AI_BACKEND=mock      # 规则引擎（零依赖，兜底保障）
+
+# Ollama 本地模型
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=deepseek-r1:1.5b
 
 # DeepSeek 云端 API（AI_BACKEND=deepseek 时必填）
 DEEPSEEK_API_KEY=sk-your-key-here
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 # 数据库连接（Docker 环境自动注入）
 DB_HOST=localhost
@@ -378,6 +383,8 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=FengQiao@2026
 DB_NAME=fengqiao_zhidun
+
+# 主从库读写分离、Redis 连接、读库策略等完整配置项见 .env.example
 ```
 
 ## 🔒 安全与合规设计
@@ -431,14 +438,14 @@ DB_NAME=fengqiao_zhidun
 ### 合规审计
 
 - **操作审计**：`audit_logs` 表以 JSON 格式记录每次操作的操作人、目标、详情和时间戳，满足算法可审计、内容可溯源的合规红线要求
-- **版本追溯**：30+ 次高频原子化 Git 提交，完整开发日志，代码变更可回溯
+- **版本追溯**：88 次高频原子化 Git 提交，完整开发日志，代码变更可回溯
 - **AI 提示词版本化**：每次 AI 调用的 Prompt 模板随代码版本管理，评审时可逐版对照
 
 ### 云+端双模热切换
 
 | 模式 | 适用场景 | 安全等级 | 推理能力 |
 |------|---------|:--:|------|
-| 云端 DeepSeek-v4-pro | 日常工作、统计分析等非敏感场景 | ⭐⭐⭐ | 671B 参数，顶级推理 |
+| 云端 DeepSeek-v4-pro | 日常工作、统计分析等非敏感场景 | ⭐⭐⭐ | 顶级推理能力 |
 | 本地 Ollama (DeepSeek-R1) | 真实案件处理、敏感数据比对 | ⭐⭐⭐⭐⭐ | 蒸馏模型，满足业务需求 |
 | 本地 ST 向量模型 | 批量文本相似度计算 | ⭐⭐⭐⭐⭐ | 轻量高效，CPU 可运行 |
 | 规则引擎 | 全部后端不可用时的兜底 | ⭐⭐⭐⭐⭐ | 关键词+规则，零依赖 |
@@ -452,7 +459,7 @@ DB_NAME=fengqiao_zhidun
 ```
 ① Excel 导入 → 拖入案件列表 Excel → 18 字段自动解析 → 表格预览 → 写入 MySQL
 ② 智能去重 → 四维加权比对存量数据 → AI 语义分析 → 缓存结果 → 人工确认
-③ 风险预警 → 跨渠道关联检索 → 规则引擎扫描 → 红橙黄三级预警 → 钉钉推送
+③ 风险预警 → 跨渠道关联检索 → 规则引擎扫描 → 红橙黄三级预警
 ④ 处置跟进 → 时间轴展示全流程 → 指派责任人 → 提交处置方案 → 闭环归档
 ```
 

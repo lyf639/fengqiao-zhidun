@@ -113,6 +113,7 @@ def task_dedup_batch(params: dict, task_id: str) -> dict:
     """异步执行批量去重（耗时操作，逐条比对 AI 语义）"""
     from models import Case, DedupRecord, get_session
     from ai_service import semantic_similarity, field_scores
+    from concurrent.futures import ThreadPoolExecutor
     batch = params.get('batch', '')
     case_ids = params.get('case_ids', [])
     if not batch or not case_ids:
@@ -121,19 +122,24 @@ def task_dedup_batch(params: dict, task_id: str) -> dict:
     session = get_session()
     matches = []
     results = []
+    # 全局 AI 调用预算：候选过多时用规则引擎兜底，保证任务在有限时间内完成
+    AI_BUDGET = 120
+    ai_calls = 0
     try:
         new_cases = session.query(Case).filter(Case.import_batch == batch).all()
         total = len(new_cases)
         for idx, new_case in enumerate(new_cases):
-            # 候选：排除自己即可，同批次案件也参与比对（演示场景正是同批次重复登记）
-            # 先做字段级预筛（零 AI 成本），只有电话/区域/姓名得分高的候选才调 AI 语义
             new_dict = {
                 'parties': new_case.parties or '',
                 'district': new_case.district or '',
                 'dispute_type': new_case.dispute_type or '',
                 'description': new_case.description or '',
             }
+            # 字段级预筛：pre=电话+地址+姓名（满分 80），总评 = pre + 语义(0~20)，阈值 85。
+            # 仅当 65 ≤ pre < 85 时语义分才可能影响判定 → 只对该区间候选调 AI，
+            # pre ≥ 85（防御，实际最大 80）直接判重复，pre < 65 直接判唯一。
             candidates = []
+            immediate_dups = []
             for old_case in session.query(Case).filter(Case.id != new_case.id).all():
                 old_dict = {
                     'parties': old_case.parties or '',
@@ -143,25 +149,39 @@ def task_dedup_batch(params: dict, task_id: str) -> dict:
                 }
                 f = field_scores(new_dict, old_dict)
                 pre = f['phone'] + f['address'] + f['name']
-                if pre >= 30:  # 字段分足够高才进入 AI 语义比对
-                    candidates.append((old_case, old_dict, f, pre))
-            candidates.sort(key=lambda x: x[3], reverse=True)
+                if pre >= 85:
+                    immediate_dups.append((old_case, f, pre))
+                elif pre >= 65:
+                    candidates.append((old_case, f, pre))
+            candidates.sort(key=lambda x: x[2], reverse=True)
             candidates = candidates[:5]
 
-            for old_case, old_dict, f, pre in candidates:
+            # 并发调用 AI 语义，避免串行 30s 超时堆积
+            def ai_judge(cand):
+                old_case, f, pre = cand
                 semantic = 0
-                try:
-                    a_text = f"{new_dict['description']} {new_dict['dispute_type']}"
-                    b_text = f"{old_dict['description']} {old_dict['dispute_type']}"
-                    if a_text.strip() and b_text.strip():
-                        sim = semantic_similarity(
-                            {'description': a_text, 'dispute_type': ''},
-                            {'description': b_text, 'dispute_type': ''},
-                        )
-                        semantic = max(0, min(20, int(sim.get('score', 0))))
-                except:
-                    pass
-                total_score = f['phone'] + f['address'] + semantic + f['name']
+                if ai_calls < AI_BUDGET:
+                    try:
+                        a_text = f"{new_dict['description']} {new_dict['dispute_type']}"
+                        b_text = f"{old_case.description or ''} {old_case.dispute_type or ''}"
+                        if a_text.strip() and b_text.strip():
+                            sim = semantic_similarity(
+                                {'description': a_text, 'dispute_type': ''},
+                                {'description': b_text, 'dispute_type': ''},
+                            )
+                            semantic = max(0, min(20, int(sim.get('score', 0))))
+                    except Exception:
+                        pass
+                return (old_case, f, pre, semantic)
+
+            processed = []
+            if candidates:
+                with ThreadPoolExecutor(max_workers=5) as ex:
+                    processed = list(ex.map(ai_judge, candidates))
+                ai_calls += len(candidates)
+
+            for old_case, f, pre, semantic in processed + [(c[0], c[1], c[2], 0) for c in immediate_dups]:
+                total_score = pre + semantic
                 if total_score >= 85:
                     session.add(DedupRecord(case_id=new_case.id, matched_case_id=old_case.id,
                         score_phone=f['phone'], score_address=f['address'],

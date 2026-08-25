@@ -234,17 +234,27 @@ def get_stats():
         # 预警按乡镇分布（堆叠柱状图数据）
         districts = session.query(Case.district).filter(Case.district != '').distinct().all()
         districts = [d[0] for d in districts] or ['枸杞乡']
+        # 乡镇固定展示顺序（嵊泗县行政区划），不在列表中的乡镇排到末尾
+        ORDER = ['菜园镇', '嵊山镇', '洋山镇', '五龙乡', '黄龙乡', '枸杞乡', '花鸟乡']
+        idx = {n: i for i, n in enumerate(ORDER)}
         red, orange, yellow = [], [], []
+        rows = []
         for d in districts:
-            red.append(session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 3).scalar() or 0)
-            orange.append(session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 2).scalar() or 0)
-            yellow.append(session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 1).scalar() or 0)
+            r = session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 3).scalar() or 0
+            o = session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 2).scalar() or 0
+            y = session.query(func.count(Case.id)).filter(Case.district == d, Case.alert_level == 1).scalar() or 0
+            rows.append((d, r, o, y, idx.get(d, len(ORDER))))
+        rows.sort(key=lambda x: (x[4], x[0]))
+        labels = [r[0] for r in rows]
+        red = [r[1] for r in rows]
+        orange = [r[2] for r in rows]
+        yellow = [r[3] for r in rows]
         return {
             'total': session.query(func.count(Case.id)).scalar(),
             'duplicates': session.query(func.count(Case.id)).filter(Case.dedup_status >= 2).scalar(),
             'alerts': session.query(func.count(Case.id)).filter(Case.alert_level > 0).scalar(),
             'red_count': sum(red), 'orange_count': sum(orange), 'yellow_count': sum(yellow),
-            'chart': {'labels': districts, 'red': red, 'orange': orange, 'yellow': yellow},
+            'chart': {'labels': labels, 'red': red, 'orange': orange, 'yellow': yellow},
         }
     finally:
         session.close()
@@ -416,14 +426,20 @@ def run_dedup(req: DedupRequest):
                         'dispute_type': m.dispute_type or '',
                         'description': m.description or '',
                     }
-                    # 走 gRPC AI 微服务（自动回退本地）
-                    ai_result = ai_similarity(
-                        f"{new_dict.get('description','')} {new_dict.get('dispute_type','')}",
-                        f"{match_dict.get('description','')} {match_dict.get('dispute_type','')}",
-                    )
-                    score_semantic = float(ai_result.get('score', 0))
                     # 逐字段实际比对 phone/address/name，不再硬编码满分
                     f_scores = field_scores(new_dict, match_dict)
+                    pre = f_scores['phone'] + f_scores['address'] + f_scores['name']
+                    # 语义分(0~20)仅在 65 ≤ pre < 85 时影响 ≥85 判定，其余直接按字段分判定，
+                    # 避免对每条候选都调云端 AI（几十次串行调用导致超时）
+                    ai_result = {}
+                    score_semantic = 0.0
+                    if 65 <= pre < 85:
+                        # 走 gRPC AI 微服务（自动回退本地）
+                        ai_result = ai_similarity(
+                            f"{new_dict.get('description','')} {new_dict.get('dispute_type','')}",
+                            f"{match_dict.get('description','')} {match_dict.get('dispute_type','')}",
+                        )
+                        score_semantic = float(ai_result.get('score', 0))
                     scores = {'phone': f_scores['phone'], 'address': f_scores['address'], 'semantic': score_semantic, 'name': f_scores['name']}
                     total = sum(scores.values())
                     session.add(DedupRecord(
@@ -436,8 +452,8 @@ def run_dedup(req: DedupRequest):
                         best_score = total
                         best_result = {
                             'case_id': cid, 'match_count': 1, 'total_score': total,
-                            'ai_backend': ai_result.get('backend', 'mock'),
-                            'ai_reason': ai_result.get('reason', ''),
+                            'ai_backend': ai_result.get('backend', 'field') if score_semantic else 'field',
+                            'ai_reason': ai_result.get('reason', '') if score_semantic else '字段分直接判定',
                         }
 
                 # ≥85 分才判定疑似重复，否则标记为唯一案件

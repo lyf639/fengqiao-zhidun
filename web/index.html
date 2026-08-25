@@ -10,7 +10,7 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js">
 </script>
-<link rel="stylesheet" href="/static/css/style.css">
+<link rel="stylesheet" href="/static/css/style.css?v=2">
 </head>
 <body>
 
@@ -33,109 +33,127 @@
   <div class="cockpit-hero">
     <div class="hero-glow-left"></div>
     <div class="hero-content">
-      <div class="hero-badge">嵊泗县综治中心 · 新时代枫桥经验</div>
-      <h1 class="hero-title">枫桥<span class="gold">智盾</span></h1>
-      <p class="hero-subtitle">基层矛盾纠纷 · 智能预警与化解平台</p>
+      <div class="hero-top">
+        <div class="hero-head">
+          <div class="hero-badge">嵊泗县综治中心 · 新时代枫桥经验</div>
+          <h1 class="hero-title">枫桥<span class="gold">智盾</span></h1>
+          <p class="hero-subtitle">基层矛盾纠纷 · 智能预警与化解平台</p>
+        </div>
+        <div class="hero-cta">
+          <button class="btn-enter" onclick="enterDemo()">开始导入数据 <span class="btn-enter-arrow">→</span></button>
+        </div>
+      </div>
 
       <div class="hero-stats">
         <div class="hero-stat">
           <div class="hs-icon">📥</div>
-          <div class="hs-value"><span class="counter" data-key="total" data-target="0">0</span></div>
-          <div class="hs-label">累计案件数</div>
+          <div class="hs-val">
+            <div class="hs-value"><span class="counter" data-key="total" data-target="0">0</span></div>
+            <div class="hs-label">累计案件数</div>
+          </div>
         </div>
         <div class="hero-stat">
           <div class="hs-icon">🔄</div>
-          <div class="hs-value"><span class="counter" data-key="dedup" data-target="0">0</span></div>
-          <div class="hs-label">智能去重识别</div>
+          <div class="hs-val">
+            <div class="hs-value"><span class="counter" data-key="dedup" data-target="0">0</span></div>
+            <div class="hs-label">智能去重识别</div>
+          </div>
         </div>
         <div class="hero-stat">
           <div class="hs-icon">🔴</div>
-          <div class="hs-value"><span class="counter" data-key="alerts" data-target="0">0</span></div>
-          <div class="hs-label">实时预警事件</div>
+          <div class="hs-val">
+            <div class="hs-value"><span class="counter" data-key="alerts" data-target="0">0</span></div>
+            <div class="hs-label">实时预警事件</div>
+          </div>
         </div>
         <div class="hero-stat">
           <div class="hs-icon">✅</div>
-          <div class="hs-value"><span class="counter" data-key="resolved" data-target="0">0</span></div>
-          <div class="hs-label">化解成功</div>
+          <div class="hs-val">
+            <div class="hs-value"><span class="counter" data-key="resolved" data-target="0">0</span></div>
+            <div class="hs-label">化解成功</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cockpit-main">
+    <div class="main-col left">
+      <div class="features-block">
+        <div class="block-title">平台核心能力</div>
+        <div class="features-grid">
+          <div class="feat-card">
+            <div class="fc-icon">📂</div>
+            <div class="fc-title">一键导入</div>
+            <div class="fc-desc">上游系统导出Excel，拖入即解析入库，告别手动逐条录入</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🔍</div>
+            <div class="fc-title">智能去重</div>
+            <div class="fc-desc">大模型多维加权评分，电话/地址/语义交叉比对</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">🔔</div>
+            <div class="fc-title">实时预警</div>
+            <div class="fc-desc">红橙黄三级预警，跨渠道关联自动发现，高风险提前干预</div>
+          </div>
+          <div class="feat-card">
+            <div class="fc-icon">📊</div>
+            <div class="fc-title">闭环管理</div>
+            <div class="fc-desc">从录入到化解全链路跟踪，自动生成处置档案与统计报告</div>
+          </div>
         </div>
       </div>
 
-      <div class="hero-cta">
-        <button class="btn-enter" onclick="enterDemo()">
-          进入系统演示 <span class="btn-enter-arrow">→</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div class="cockpit-features">
-    <div class="feat-card">
-      <div class="fc-icon">📂</div>
-      <div class="fc-title">一键导入</div>
-      <div class="fc-desc">支持从司法行政、综治系统等上游平台导出Excel，拖入即解析，告别手动逐条录入</div>
-    </div>
-    <div class="feat-card">
-      <div class="fc-icon">🔍</div>
-      <div class="fc-title">智能去重</div>
-      <div class="fc-desc">DeepSeek大模型多维加权评分，电话/地址/语义交叉比对，月均减少386条重复工作</div>
-    </div>
-    <div class="feat-card">
-      <div class="fc-icon">🔔</div>
-      <div class="fc-title">实时预警</div>
-      <div class="fc-desc">红橙黄三级预警体系，跨渠道关联自动发现，高风险事件可提前7天主动干预</div>
-    </div>
-    <div class="feat-card">
-      <div class="fc-icon">📊</div>
-      <div class="fc-title">闭环管理</div>
-      <div class="fc-desc">从录入到化解全链路跟踪，自动生成处置档案与统计分析报告</div>
-    </div>
-  </div>
-
-  <div class="cockpit-dash">
-    <div class="dash-panel">
-      <div class="dp-title">实时动态</div>
-      <ul class="live-feed" id="liveFeed">
-        <li class="lf-empty">暂无动态，数据导入后将实时展示</li>
-      </ul>
-    </div>
-    <div class="dash-panel">
-      <div class="dp-title">今日预警概览</div>
-      <div class="alert-mini-row red">
-        <span>🔴 红色预警</span>
-        <span class="am-count" data-kind="red">0</span>
-      </div>
-      <div class="alert-mini-row orange">
-        <span>🟠 橙色预警</span>
-        <span class="am-count" data-kind="orange">0</span>
-      </div>
-      <div class="alert-mini-row gold">
-        <span>🟡 黄色预警</span>
-        <span class="am-count" data-kind="yellow">0</span>
-      </div>
-      <div style="margin-top:16px;">
-        <canvas id="chartMini" height="160"></canvas>
-      </div>
-    </div>
-  </div>
-
-  <div class="report-section">
-    <div class="report-card">
-      <div class="rc-left">
-        <div class="rc-icon">📊</div>
-        <div>
-          <div class="rc-title">AI 智能分析报告</div>
-          <div class="rc-desc">基于 DeepSeek 大模型，自动统计案件数据并生成专业分析报告</div>
+      <div class="report-section">
+        <div class="report-card">
+          <div class="rc-left">
+            <div class="rc-icon">📊</div>
+            <div>
+              <div class="rc-title">AI 智能分析报告</div>
+              <div class="rc-desc">基于 DeepSeek 大模型自动统计并生成专业分析报告</div>
+            </div>
+          </div>
+          <div class="rc-controls">
+            <select id="reportPeriod" onchange="onReportPeriodChange()">
+              <option value="monthly">月度报告</option>
+              <option value="quarterly">季度报告</option>
+              <option value="yearly">年度报告</option>
+            </select>
+            <select id="reportYear"></select>
+            <select id="reportSub" style="display:none;"></select>
+            <button class="btn btn-gold" onclick="generateReport()">🤖 生成报告</button>
+          </div>
         </div>
       </div>
-      <div class="rc-controls">
-        <select id="reportPeriod" onchange="onReportPeriodChange()">
-          <option value="monthly">月度报告</option>
-          <option value="quarterly">季度报告</option>
-          <option value="yearly">年度报告</option>
-        </select>
-        <select id="reportYear"></select>
-        <select id="reportSub" style="display:none;"></select>
-        <button class="btn btn-gold" onclick="generateReport()">🤖 生成报告</button>
+    </div>
+
+    <div class="main-col right">
+      <div class="dash-panel feed-panel">
+        <div class="dp-title">实时动态</div>
+        <ul class="live-feed" id="liveFeed">
+          <li class="feed-item"><span class="lf-dot green"></span><span class="lf-text">🛰️ 平台就绪 · 本地部署运行中，数据不出域</span><span class="lf-time">--:--</span></li>
+          <li class="feed-item"><span class="lf-dot green"></span><span class="lf-text">⏳ 等待数据导入，导入后将实时展示处理动态</span><span class="lf-time">--:--</span></li>
+          <li class="feed-item"><span class="lf-dot green"></span><span class="lf-text">🟢 系统状态正常 · 支持一键导入 / 智能去重 / 实时预警</span><span class="lf-time">--:--</span></li>
+        </ul>
+      </div>
+      <div class="dash-panel alerts-panel">
+        <div class="dp-title">今日预警概览</div>
+        <div class="alert-mini-row red">
+          <span>🔴 红色预警</span>
+          <span class="am-count" data-kind="red">0</span>
+        </div>
+        <div class="alert-mini-row orange">
+          <span>🟠 橙色预警</span>
+          <span class="am-count" data-kind="orange">0</span>
+        </div>
+        <div class="alert-mini-row gold">
+          <span>🟡 黄色预警</span>
+          <span class="am-count" data-kind="yellow">0</span>
+        </div>
+        <div class="chart-mini-wrap">
+          <canvas id="chartMini"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -166,8 +184,6 @@
       <div class="progress-step" data-step="2"><div class="dot">2</div><span>智能去重</span></div>
       <div class="progress-line" data-line="2"></div>
       <div class="progress-step" data-step="3"><div class="dot">3</div><span>风险预警</span></div>
-      <div class="progress-line" data-line="3"></div>
-      <div class="progress-step" data-step="4"><div class="dot">4</div><span>处置跟进</span></div>
     </div>
   </div>
 
@@ -258,43 +274,11 @@
       </div>
     </div>
 
-    <!-- STEP 4 -->
-    <div class="step-panel" id="step4">
-      <div class="step-title">处置跟进 · 闭环归档</div>
-      <div class="step-subtitle">指派责任人、跟踪处置进展、自动生成化解档案</div>
-      <div class="timeline">
-        <div class="timeline-item completed"><div class="timeline-date" id="tl1Date">--</div><div class="timeline-content" id="tl1Text">Excel 一键导入，系统自动解析并标准化入库</div></div>
-        <div class="timeline-item completed"><div class="timeline-date" id="tl2Date">--</div><div class="timeline-content" id="tl2Text">智能去重完成</div></div>
-        <div class="timeline-item completed"><div class="timeline-date" id="tl3Date">--</div><div class="timeline-content" id="tl3Text">风险预警触发</div></div>
-        <div class="timeline-item active"><div class="timeline-date">当前 · 待处置</div><div class="timeline-content"><strong>← 当前节点：</strong>等待指派责任人并跟进处置</div></div>
-      </div>
-      <div class="confirm-card" style="margin-top:24px;">
-        <div class="confirm-title" id="step4Title">📝 处置方案 · 红色预警案件</div>
-        <div class="form-grid" style="margin-top:12px;">
-          <div class="form-group"><label>处置方式</label><select id="step4Method"><option>上门调解</option><option>约谈双方</option><option selected>部门联动</option><option>法律途径</option></select></div>
-          <div class="form-group"><label>牵头单位</label><select id="step4Dept"><option>综治中心</option><option selected>司法所+派出所</option><option>法院</option></select></div>
-          <div class="form-group"><label>处置时限</label><input id="step4Deadline" value="3 个工作日"></div>
-          <div class="form-group"><label>责任人</label><input id="step4Owner" value="待指派"></div>
-          <div class="form-group full"><label>处置意见</label><textarea id="step4Opinion">请根据案件实际情况填写处置意见，系统将自动跟踪处置进展。</textarea></div>
-        </div>
-      </div>
-      <div class="btn-row"><button class="btn btn-primary" onclick="completeStep4()">✅ 提交处置方案 · 完成闭环</button></div>
-      <div class="result-box success" id="step4Result" style="margin-top:24px;">
-        <div class="result-box-header">✅ 处置方案已提交 · 全流程闭环完成</div>
-        <div class="result-box-body">
-          <p>系统将自动跟踪处置进展，到期前 3 天提醒。处置完成后自动生成化解档案。</p>
-          <div style="margin-top:16px;font-size:13px;color:var(--gray-400);line-height:2;"><strong>完整闭环：</strong><br>📂 Excel导入(27条) → 🔍 智能去重(5条重复) → 🔴 风险预警(红色2·橙色5) → 📋 指派责任人 → 📊 跟踪处置 → 📁 闭环归档</div>
-          <div style="margin-top:16px;font-size:13px;color:var(--gray-600);background:var(--gray-100);padding:14px;border-radius:var(--radius-lg);">
-            <strong>⏱ 全流程耗时：</strong>人工 6.5小时 → 枫桥智盾 1分钟<span style="color:var(--gold);font-weight:700;">&nbsp;效率提升 99.7%</span>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:24px;text-align:center;"><button class="btn btn-outline btn-sm" onclick="resetAll()">🔄 重置演示</button></div>
     </div>
   </div>
 </div>
 
-<script src="/static/js/cockpit.js?v=5"></script>
-<script src="/static/js/demo.js?v=7"></script>
+<script src="/static/js/cockpit.js?v=7"></script>
+<script src="/static/js/demo.js?v=10"></script>
 </body>
 </html>

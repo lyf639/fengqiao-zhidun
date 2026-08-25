@@ -1,4 +1,26 @@
-<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><style>body{font-family:"Microsoft YaHei",sans-serif;max-width:900px;margin:0 auto;padding:40px;color:#333;line-height:1.8}h1{text-align:center;font-size:26px;border-bottom:2px solid #1a3a5c;padding-bottom:10px}h2{font-size:20px;border-bottom:1px solid #ddd;padding-bottom:6px;margin-top:36px}h3{font-size:16px}table{border-collapse:collapse;width:100%;margin:14px 0}th,td{border:1px solid #ccc;padding:8px 12px;text-align:left}th{background:#f0f4f8}pre{background:#f5f5f5;padding:14px;border-radius:4px;overflow-x:auto;font-size:13px}code{background:#f0f0f0;padding:2px 6px;border-radius:3px}blockquote{border-left:4px solid #1a3a5c;margin:14px 0;padding:10px 18px;background:#f8f9fa}hr{border:none;border-top:1px solid #eee;margin:40px 0}strong{color:#1a3a5c}</style></head><body><h1 id="_1">枫桥智盾 · 基层矛盾纠纷智能预警与化解平台</h1>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: "Microsoft YaHei", "SimSun", sans-serif; max-width: 900px; margin: 0 auto; padding: 40px; color: #333; line-height: 1.8; }
+  h1 { text-align: center; font-size: 26px; border-bottom: 2px solid #1a3a5c; padding-bottom: 10px; }
+  h2 { font-size: 20px; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-top: 36px; }
+  h3 { font-size: 16px; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+  th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+  th { background: #f0f4f8; }
+  pre { background: #f5f5f5; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 13px; }
+  code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+  blockquote { border-left: 4px solid #1a3a5c; margin: 14px 0; padding: 10px 18px; background: #f8f9fa; }
+  hr { border: none; border-top: 1px solid #eee; margin: 40px 0; }
+  strong { color: #1a3a5c; }
+  img { max-width: 100%; }
+  .page-break { page-break-after: always; }
+</style>
+</head>
+<body>
+<h1 id="_1">枫桥智盾 · 基层矛盾纠纷智能预警与化解平台</h1>
 <blockquote>
 <p>一体化社会治理智能平台，践行新时代"枫桥经验"，以国产大模型与智能体技术赋能基层矛盾纠纷全周期管理。</p>
 </blockquote>
@@ -37,7 +59,7 @@
 </tr>
 <tr>
 <td>📊 可观测</td>
-<td>Prometheus /metrics 端点 · 9 类业务+HTTP+系统指标 · Grafana 就绪</td>
+<td>Prometheus /metrics 端点 · 11 个业务+HTTP+系统指标 · 可接入 Grafana</td>
 </tr>
 </tbody>
 </table>
@@ -143,7 +165,15 @@
 <li>分类映射规则引擎——不同上游系统对同类纠纷的叫法各异（如 12345 热线称"邻里矛盾"、公安接警称"打架斗殴"），系统通过 category_mappings 表自动统一映射为标准分类</li>
 <li>重复 case_code 自动跳过，批次号追溯每次导入</li>
 </ul>
-<h3 id="ai">智能去重（四维加权 + AI 语义）</h3>
+<h3 id="ai">AI 文字解析录入</h3>
+<p>除 Excel 批量导入外，支持直接输入一段自然语言描述的案件文本，AI 自动识别并提取结构化字段。任意格式的自由文本（语音转文字、聊天记录、工作简报等）均可输入，AI 提取当事人、纠纷类型、乡镇、金额、难度、摘要后以表格预览展示，人工确认一键入库。</p>
+<ul>
+<li>三级降级：DeepSeek-v4-pro（置信度 0.9）→ Ollama 本地模型（0.7）→ 正则规则兜底（0.4）</li>
+<li>与去重/报告共享同一套 <code>AI_BACKEND</code> 环境变量，无需额外配置</li>
+<li>解析结果展示引擎名 + 置信度，全程可追溯</li>
+<li>量化效果：从手动填写 18 个字段约 2 分钟 → 贴入文字 5 秒确认</li>
+</ul>
+<h3 id="ai_1">智能去重（四维加权 + AI 语义）</h3>
 <p>电话、地址、语义、姓名四维加权评分模型——每维均基于实际字段比对动态计算，拒绝硬编码满分。</p>
 <table>
 <thead>
@@ -185,7 +215,7 @@
 <li><strong>🟡 黄色预警</strong>：难度级别非"简单纠纷"或跨 2 个渠道关联，当日提醒</li>
 </ul>
 <p>预警事件独立记录，含触发规则、关联渠道、推送状态，WebSocket 实时推送到驾驶舱弹窗。</p>
-<h3 id="ai_1">AI 智能分析报告</h3>
+<h3 id="ai_2">AI 智能分析报告</h3>
 <p>自动聚合指定时间段内的全量案件数据，调用 AI 大模型生成三段式结构化分析报告：</p>
 <ul>
 <li>支持月度、季度、年度三种时间维度</li>
@@ -217,7 +247,7 @@
 │  安全网关层    JWT auth, CORS, TokenBucket     │
 ├─────────────────────────────────────────────────┤
 │  服务网关层    FastAPI, Pydantic, Swagger      │
-│              29+ RESTful endpoints             │
+│              35+ RESTful endpoints             │
 ├─────────────────────────────────────────────────┤
 │  业务逻辑层    SQLAlchemy 2.0, 15 tables       │
 │              FK constraints, M-N relations     │
@@ -303,7 +333,7 @@
 <p><strong>MySQL 读写分离集群</strong>：<code>db_router.py</code> 实现主从连接路由，Master 处理所有写入，Slave(s) 轮询负载均衡处理查询。从库不可用时自动回退主库。</p>
 </li>
 <li>
-<p><strong>Prometheus 监控 + 令牌桶限流</strong>：<code>GET /metrics</code> 暴露 9 类业务 + HTTP + 系统指标。<code>rate_limiter.py</code> 预置 strict/normal/import/ai 四档策略，超限返回 429 + Retry-After。</p>
+<p><strong>Prometheus 监控 + 令牌桶限流</strong>：<code>GET /metrics</code> 暴露 11 个业务 + HTTP + 系统指标。<code>rate_limiter.py</code> 预置 strict/normal/import/ai 四档策略，超限返回 429 + Retry-After。</p>
 </li>
 <li>
 <p><strong>熔断器</strong>：<code>circuit_breaker.py</code> 实现 CLOSED → OPEN → HALF_OPEN 三态自动切换。gRPC 连续失败 3 次触发熔断 60s，半开试探成功后恢复。</p>
@@ -349,7 +379,7 @@
 </table>
 <p>14 个权限码覆盖 6 大资源：<code>cases:read|write|delete</code>、<code>persons:read|write|delete</code>、<code>alerts:read|manage</code>、<code>dedup:read|manage</code>、<code>audit:read</code>、<code>report:generate</code>、<code>admin:access</code>、<code>users:manage</code>。</p>
 <p><strong>多租户数据隔离</strong>：乡镇（街道）级多租户架构，<code>tenants</code> 表 + <code>cases</code>/<code>persons</code>/<code>users</code> 三表 <code>tenant_id</code> 外键。JWT Token 内嵌租户上下文，SQLAlchemy Query 自动追加 <code>WHERE tenant_id = ?</code> 过滤。超级管理员（<code>tenant_id=NULL</code>）可跨租户查看全部数据。</p>
-<p><strong>合规审计</strong>：<code>audit_logs</code> 表 JSON 格式全链路操作记录 + 30+ 次原子化 Git 提交 + AI 提示词版本化管理。</p>
+<p><strong>合规审计</strong>：<code>audit_logs</code> 表 JSON 格式全链路操作记录 + 88 次原子化 Git 提交 + AI 提示词版本化管理。</p>
 <h3 id="_17">容灾与高可用</h3>
 <pre><code>         ┌──────────┬──────────┬──────────┐
          │  NGINX   │  NGINX   │  NGINX   │  (健康检查剔除)
@@ -515,7 +545,7 @@
 │       ├── cockpit.js         驾驶舱逻辑 + WebSocket 实时推送
 │       └── demo.js            四步流程（导入/去重/预警/跟进）
 ├── backend/
-│   ├── server.py              FastAPI 主服务（29+ RESTful / gRPC 客户端 / WebSocket）
+│   ├── server.py              FastAPI 主服务（35+ RESTful / gRPC 客户端 / WebSocket）
 │   ├── ai_server.py           AI 微服务（gRPC :50051 · 去重/报告/语义）
 │   ├── models.py              ORM 模型层（15 表 · 完整关系映射）
 │   ├── ai_service.py          AI 语义服务（4 后端 · 自动降级）
@@ -536,7 +566,7 @@
 ├── deploy/
 │   ├── nginx.conf             NGINX 负载均衡 + 反向代理
 │   └── supervisor.conf        进程守护（自动重启）
-├── sql/init.sql               数据库初始化（15 表 · 外键 · 索引）
+├── sql/init.sql               数据库初始化（7 张核心表，其余 8 表启动时自动创建）
 ├── Dockerfile                 Python 3.12-slim 镜像
 ├── docker-compose.yml         MySQL 8.4 + API 双容器编排
 ├── requirements.txt           依赖锁定版本
@@ -625,16 +655,21 @@ docker-compose up -d
 <h3 id="_26">环境变量</h3>
 <pre><code class="language-bash">cp .env.example .env
 </code></pre>
-<pre><code class="language-ini"># AI 后端选择（四选一）
-AI_BACKEND=deepseek     # DeepSeek-v4-pro 云端大模型
-AI_BACKEND=st           # 本地向量模型（Sentence-Transformers）
-AI_BACKEND=ollama       # 本地大模型（DeepSeek-R1 蒸馏版，纯离线）
-AI_BACKEND=mock         # 规则引擎（零依赖，兜底保障）
+<pre><code class="language-ini"># AI 后端选择（四选一，默认 ollama，与 .env.example 一致）
+AI_BACKEND=ollama      # 本地大模型（DeepSeek-R1 蒸馏版，纯离线）
+# AI_BACKEND=deepseek  # DeepSeek-v4-pro 云端大模型（需 API Key）
+# AI_BACKEND=st        # 本地向量模型（Sentence-Transformers，数据不出域）
+# AI_BACKEND=mock      # 规则引擎（零依赖，兜底保障）
+
+# Ollama 本地模型
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=deepseek-r1:1.5b
 
 # DeepSeek 云端 API（AI_BACKEND=deepseek 时必填）
 DEEPSEEK_API_KEY=sk-your-key-here
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 
-# 数据库
+# 数据库（Docker 环境自动注入）
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
@@ -645,9 +680,11 @@ DB_NAME=fengqiao_zhidun
 # DB_SLAVE_HOSTS=localhost:3307,localhost:3308
 # DB_READ_STRATEGY=round_robin
 
-# gRPC AI 微服务
+# gRPC AI 微服务（grpc_client.py 读取）
 # GRPC_AI_HOST=localhost
 # GRPC_AI_PORT=50051
+
+# 主从库、Redis 等完整配置项见 .env.example
 </code></pre>
 <h3 id="_27">云+端双模热切换</h3>
 <table>
@@ -664,7 +701,7 @@ DB_NAME=fengqiao_zhidun
 <td>云端 DeepSeek-v4-pro</td>
 <td>日常工作、统计分析等非敏感场景</td>
 <td style="text-align: center;">⭐⭐⭐</td>
-<td>671B 参数，顶级推理</td>
+<td>顶级推理能力</td>
 </tr>
 <tr>
 <td>本地 Ollama (DeepSeek-R1)</td>
@@ -688,4 +725,6 @@ DB_NAME=fengqiao_zhidun
 </table>
 <p>切换方式：修改 <code>.env</code> 中 <code>AI_BACKEND</code> 一行配置，无需重启服务，前端即刻感知。</p>
 <hr />
-<p><strong>作者：</strong> 嵊泗县委政法委刘亦凡 · <strong>仓库：</strong> <a href="https://github.com/lyf639/fengqiao-zhidun">github.com/lyf639/fengqiao-zhidun</a> · <strong>开发工具：</strong> Qoder AI 编程助手</p></body></html>
+<p><strong>作者：</strong> 嵊泗县委政法委刘亦凡 · <strong>仓库：</strong> <a href="https://github.com/lyf639/fengqiao-zhidun">github.com/lyf639/fengqiao-zhidun</a> · <strong>开发工具：</strong> Qoder AI 编程助手</p>
+</body>
+</html>
